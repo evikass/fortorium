@@ -7,10 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Wand2, Film, Bot, Play, Image, Loader2, CheckCircle, Circle, Sparkles, RefreshCw, Users, Clock, MapPin, Music, Sun, Moon, CloudSun } from 'lucide-react';
+import { 
+  Wand2, Film, Bot, Play, Image, Loader2, CheckCircle, Circle, Sparkles, RefreshCw, 
+  Users, Clock, MapPin, Music, Sun, Moon, CloudSun, Settings, Download, Github,
+  Mic, Scissors, Monitor
+} from 'lucide-react';
 import { initVersionSystem, CLIENT_VERSION, forceReload } from '@/lib/version';
 
-// Расширенные интерфейсы
+// Интерфейсы
 interface Character {
   name: string;
   role?: string;
@@ -93,10 +97,22 @@ interface AgentStatus {
   id: string;
   name: string;
   icon: string;
+  color: string;
   status: 'waiting' | 'working' | 'done';
   progress: number;
   message: string;
 }
+
+// Все агенты студии
+const ALL_AGENTS = [
+  { id: 'producer', name: 'Продюсер', icon: '🤖', color: 'bg-purple-500', desc: 'Координирует весь процесс' },
+  { id: 'writer', name: 'Сценарист', icon: '📝', color: 'bg-blue-500', desc: 'Пишет сценарии и диалоги' },
+  { id: 'artist', name: 'Художник', icon: '🎨', color: 'bg-pink-500', desc: 'Создаёт раскадровки' },
+  { id: 'animator', name: 'Аниматор', icon: '🎬', color: 'bg-orange-500', desc: 'Оживляет кадры' },
+  { id: 'voice', name: 'Озвучка', icon: '🎤', color: 'bg-green-500', desc: 'Генерирует голоса' },
+  { id: 'editor', name: 'Монтажёр', icon: '✂️', color: 'bg-red-500', desc: 'Собирает ролик' },
+  { id: 'blender', name: 'Blender', icon: '💻', color: 'bg-cyan-500', desc: '3D сцены' },
+];
 
 export default function AnimationStudio() {
   const [projectName, setProjectName] = useState('');
@@ -104,17 +120,19 @@ export default function AnimationStudio() {
   const [style, setStyle] = useState('ghibli');
   const [genre, setGenre] = useState('приключения');
   const [duration, setDuration] = useState(90);
-  const [useGrok, setUseGrok] = useState(false); // false = стандартный API (бесплатный)
+  const [useBlender, setUseBlender] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [script, setScript] = useState<Script | null>(null);
   const [currentPhase, setCurrentPhase] = useState<string>('');
   const [logs, setLogs] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'scenes' | 'characters'>('overview');
+  const [activeMainTab, setActiveMainTab] = useState<'demo' | 'agents' | 'pipeline'>('demo');
+  const [activeResultTab, setActiveResultTab] = useState<'overview' | 'scenes' | 'characters'>('overview');
+  
   const [agents, setAgents] = useState<AgentStatus[]>([
-    { id: 'writer', name: 'Сценарист', icon: '📝', status: 'waiting', progress: 0, message: 'Ожидает задачу' },
-    { id: 'artist', name: 'Художник', icon: '🎨', status: 'waiting', progress: 0, message: 'Ожидает сценарий' },
-    { id: 'animator', name: 'Аниматор', icon: '🎬', status: 'waiting', progress: 0, message: 'Ожидает раскадровку' },
-    { id: 'composer', name: 'Композитор', icon: '🎵', status: 'waiting', progress: 0, message: 'Ожидает анимацию' },
+    { id: 'writer', name: 'Сценарист', icon: '📝', color: 'bg-blue-500', status: 'waiting', progress: 0, message: 'Ожидает задачу' },
+    { id: 'artist', name: 'Художник', icon: '🎨', color: 'bg-pink-500', status: 'waiting', progress: 0, message: 'Ожидает сценарий' },
+    { id: 'animator', name: 'Аниматор', icon: '🎬', color: 'bg-orange-500', status: 'waiting', progress: 0, message: 'Ожидает раскадровку' },
+    { id: 'voice', name: 'Озвучка', icon: '🎤', color: 'bg-green-500', status: 'waiting', progress: 0, message: 'Ожидает анимацию' },
   ]);
 
   useEffect(() => {
@@ -124,10 +142,10 @@ export default function AnimationStudio() {
   }, []);
 
   const styles = [
-    { value: 'ghibli', label: 'Studio Ghibli', icon: '🌸', desc: 'Мягкие акварельные тона, волшебная атмосфера' },
-    { value: 'disney', label: 'Disney 2D', icon: '🏰', desc: 'Яркие цвета, мюзикл-формат' },
-    { value: 'anime', label: 'Anime', icon: '⚡', desc: 'Динамичные сцены, японская эстетика' },
-    { value: 'pixar', label: 'Pixar 3D', icon: '🧸', desc: 'Современная 3D анимация' },
+    { value: 'ghibli', label: 'Ghibli', icon: '🏯', desc: 'Миядзаки, акварель' },
+    { value: 'disney', label: 'Disney', icon: '🏰', desc: 'Классика 2D' },
+    { value: 'pixar', label: 'Pixar', icon: '🧸', desc: 'Современный 3D' },
+    { value: 'anime', label: 'Anime', icon: '⚡', desc: 'Японский стиль' },
   ];
 
   const genres = ['приключения', 'фэнтези', 'комедия', 'драма', 'сказка', 'фантастика'];
@@ -159,90 +177,36 @@ export default function AnimationStudio() {
 
     try {
       setCurrentPhase('Генерация сценария...');
-      const apiLabel = useGrok ? 'Grok AI' : 'стандартный API';
-      addLog(`📝 Запрос на генерацию сценария через ${apiLabel}...`);
+      addLog('📝 Запрос на генерацию сценария...');
       updateAgent('writer', { status: 'working', progress: 10, message: 'Анализирую идею...' });
       
-      let generatedScript: Script | null = null;
+      const scriptRes = await fetch('/api/work', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: 'writer-1',
+          agentRole: 'writer',
+          taskType: 'generate_script',
+          input: {
+            title: projectName,
+            idea: projectIdea,
+            style: style,
+            genre: genre,
+            duration: duration,
+            targetAudience: 'семейный просмотр'
+          },
+          projectContext: { style, genre }
+        })
+      });
       
-      // Если выбран Grok - пробуем Grok-агент
-      if (useGrok) {
-        try {
-          const grokRes = await fetch('/api/agents/scenarist-grok', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: projectName,
-              idea: projectIdea,
-              style: style,
-              genre: genre,
-              duration: duration
-            })
-          });
-          
-          if (grokRes.ok) {
-            const reader = grokRes.body?.getReader();
-            if (reader) {
-              const decoder = new TextDecoder();
-              let fullContent = '';
-              
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                fullContent += decoder.decode(value, { stream: true });
-                updateAgent('writer', { progress: 10 + Math.min(40, fullContent.length / 100), message: 'Пишу сценарий...' });
-              }
-              
-              const jsonMatch = fullContent.match(/\{[\s\S]*\}/);
-              if (jsonMatch) {
-                generatedScript = JSON.parse(jsonMatch[0]) as Script;
-                addLog('✅ Сценарий создан через Grok AI!');
-              }
-            }
-          } else {
-            addLog(`⚠️ Grok AI вернул ошибку: ${grokRes.status}`);
-          }
-        } catch (grokError: any) {
-          addLog(`⚠️ Grok AI недоступен: ${grokError.message}`);
-        }
-      }
+      updateAgent('writer', { progress: 50, message: 'Создаю персонажей...' });
       
-      // Если Grok не сработал или не выбран - используем стандартный API
-      if (!generatedScript) {
-        if (useGrok) {
-          addLog('📄 Пробую резервный API...');
-        }
-        updateAgent('writer', { progress: 30, message: 'Генерирую сценарий...' });
-        
-        const scriptRes = await fetch('/api/work', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            agentId: 'writer-1',
-            agentRole: 'writer',
-            taskType: 'generate_script',
-            input: {
-              title: projectName,
-              idea: projectIdea,
-              style: style,
-              genre: genre,
-              duration: duration,
-              targetAudience: 'семейный просмотр'
-            },
-            projectContext: { style, genre }
-          })
-        });
-        
-        const scriptData = await scriptRes.json();
-        addLog(`📄 Ответ получен: success=${scriptData.success}`);
-        
-        if (scriptData.success && scriptData.output?.script) {
-          generatedScript = scriptData.output.script as Script;
-          addLog('✅ Сценарий создан!');
-        }
-      }
+      const scriptData = await scriptRes.json();
+      addLog(`📄 Ответ получен: success=${scriptData.success}`);
       
-      if (generatedScript) {
+      if (scriptData.success && scriptData.output?.script) {
+        const generatedScript: Script = scriptData.output.script;
+        addLog(`✅ Сценарий создан!`);
         addLog(`   📊 Сцен: ${generatedScript.scenes?.length || 0}`);
         addLog(`   👥 Персонажей: ${generatedScript.characters?.length || 0}`);
         addLog(`   🎭 Актов: ${generatedScript.acts?.length || 'нет'}`);
@@ -257,7 +221,7 @@ export default function AnimationStudio() {
         
         generateSceneImages(generatedScript);
       } else {
-        addLog(`❌ Ошибка: Не удалось создать сценарий`);
+        addLog(`❌ Ошибка: ${scriptData.error || 'Не удалось создать сценарий'}`);
         setCurrentPhase('Ошибка генерации');
       }
     } catch (error: any) {
@@ -343,7 +307,7 @@ export default function AnimationStudio() {
   const finishGeneration = () => {
     updateAgent('artist', { status: 'done', progress: 100, message: 'Раскадровка готова!' });
     updateAgent('animator', { status: 'done', progress: 100, message: 'Готово!' });
-    updateAgent('composer', { status: 'done', progress: 100, message: 'Готово!' });
+    updateAgent('voice', { status: 'done', progress: 100, message: 'Готово!' });
     setCurrentPhase('Проект готов!');
     addLog('🎉 Генерация завершена!');
   };
@@ -395,18 +359,32 @@ export default function AnimationStudio() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
-      <header className="border-b border-white/10 bg-black/30 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      <header className="bg-black/20 backdrop-blur-md border-b border-white/10 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg">
-              <Wand2 className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-2xl">
+              🪄
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white tracking-wide">ФОРТОРИУМ</h1>
-              <p className="text-xs text-white/50">AI Анимационная Студия v{CLIENT_VERSION}</p>
+              <h1 className="text-lg font-bold text-white">AI Animation Studio</h1>
+              <p className="text-xs text-white/50">Мультиагентная анимационная студия v{CLIENT_VERSION}</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          
+          {/* Agent Icons in Header */}
+          <div className="hidden md:flex items-center gap-1">
+            {ALL_AGENTS.map((agent) => (
+              <div
+                key={agent.id}
+                className={`w-9 h-9 rounded-lg ${agent.color} flex items-center justify-center text-base opacity-80 hover:opacity-100 hover:scale-110 transition-all cursor-pointer`}
+                title={agent.name}
+              >
+                {agent.icon}
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex items-center gap-3">
             {currentPhase && (
               <Badge variant="outline" className="border-purple-500/30 text-purple-300">
                 {currentPhase}
@@ -417,158 +395,365 @@ export default function AnimationStudio() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Project Form */}
-        <Card className="bg-white/5 border-white/10 mb-8">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Film className="w-5 h-5" /> Создать новый проект
-            </CardTitle>
-            <CardDescription className="text-white/60">
-              Опишите идею — AI создаст полноценный сценарий с персонажами, диалогами и раскадровкой
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-white/80 text-sm mb-2 block">Название проекта</label>
-                <Input
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="Волшебное путешествие..."
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
-                />
-              </div>
-              <div>
-                <label className="text-white/80 text-sm mb-2 block">Жанр</label>
-                <div className="flex flex-wrap gap-2">
-                  {genres.map((g) => (
-                    <Button
-                      key={g}
-                      size="sm"
-                      variant={genre === g ? 'default' : 'outline'}
-                      onClick={() => setGenre(g)}
-                      className={genre === g ? 'bg-purple-500' : 'border-white/20 text-white'}
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Hero Section */}
+        <section className="text-center py-8 mb-6">
+          <h2 className="text-4xl font-bold mb-3 bg-gradient-to-r from-white via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Создавайте мультфильмы с помощью ИИ
+          </h2>
+          <p className="text-lg text-white/60 max-w-2xl mx-auto mb-4">
+            Полностью автономная студия: от идеи до готового ролика. 7 ИИ-агентов работают вместе без участия людей.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <a 
+              href="https://github.com/evikass/fortorium" 
+              target="_blank"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg text-white font-medium hover:opacity-90 transition"
+            >
+              <Github className="w-4 h-4" /> Исходный код
+            </a>
+          </div>
+        </section>
+
+        {/* Main Tabs */}
+        <div className="flex gap-1 p-1 bg-white/5 rounded-xl mb-6 overflow-x-auto">
+          {[
+            { id: 'demo', label: '🎮 Демо' },
+            { id: 'agents', label: '🤖 Агенты' },
+            { id: 'pipeline', label: '🔄 Пайплайн' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveMainTab(tab.id as any)}
+              className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                activeMainTab === tab.id 
+                  ? 'bg-white/10 text-white' 
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Demo Tab */}
+        {activeMainTab === 'demo' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* New Project Form */}
+            <Card className="bg-white/5 border-white/10">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-2xl">
+                    ➕
+                  </div>
+                  <div>
+                    <CardTitle className="text-white">Новый проект</CardTitle>
+                    <CardDescription className="text-white/60">Опишите идею для мультфильма</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-white/80 text-sm mb-1 block">Название</label>
+                  <Input
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    placeholder="Кот-астронавт"
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-white/80 text-sm mb-1 block">Описание идеи</label>
+                  <Textarea
+                    value={projectIdea}
+                    onChange={(e) => setProjectIdea(e.target.value)}
+                    placeholder="Кот по имени Мурзик мечтает полететь на Луну. Однажды он находит старую ракету на свалке..."
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/40 min-h-[100px]"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-white/80 text-sm mb-2 block">Стиль анимации</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {styles.map((s) => (
+                      <button
+                        key={s.value}
+                        onClick={() => setStyle(s.value)}
+                        className={`p-3 rounded-xl text-center transition ${
+                          style === s.value 
+                            ? 'border-2 border-purple-500 bg-purple-500/10' 
+                            : 'border-2 border-transparent bg-white/5 hover:bg-white/10'
+                        }`}
+                      >
+                        <div className="text-xl mb-1">{s.icon}</div>
+                        <div className="text-xs text-white font-medium">{s.label}</div>
+                        <div className="text-[10px] text-white/50">{s.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-white/80 text-sm mb-2 block">Жанр</label>
+                  <div className="flex flex-wrap gap-2">
+                    {genres.map((g) => (
+                      <Button
+                        key={g}
+                        size="sm"
+                        variant={genre === g ? 'default' : 'outline'}
+                        onClick={() => setGenre(g)}
+                        className={genre === g ? 'bg-purple-500' : 'border-white/20 text-white'}
+                      >
+                        {g}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-white/80 text-sm mb-1 block">Длительность: {duration} сек</label>
+                  <input
+                    type="range"
+                    min="30"
+                    max="180"
+                    step="15"
+                    value={duration}
+                    onChange={(e) => setDuration(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-white/40 text-xs">
+                    <span>30 сек</span>
+                    <span>3 мин</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="use-blender"
+                    checked={useBlender}
+                    onChange={(e) => setUseBlender(e.target.checked)}
+                    className="w-4 h-4 rounded"
+                  />
+                  <label htmlFor="use-blender" className="text-white/80 text-sm">
+                    Использовать Blender (3D сцены)
+                  </label>
+                </div>
+
+                <Button
+                  onClick={generateAll}
+                  disabled={isLoading || !projectName || !projectIdea}
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-11"
+                >
+                  {isLoading ? (
+                    <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Генерация...</>
+                  ) : (
+                    <><Sparkles className="w-5 h-5 mr-2" /> Создать проект</>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Pipeline Preview */}
+            <Card className="bg-white/5 border-white/10">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center text-2xl">
+                    ▶️
+                  </div>
+                  <div>
+                    <CardTitle className="text-white">Пайплайн</CardTitle>
+                    <CardDescription className="text-white/60">Шаги создания мультфильма</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {agents.map((agent) => (
+                    <div 
+                      key={agent.id}
+                      className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10"
                     >
-                      {g}
-                    </Button>
+                      <div className={`w-11 h-11 rounded-xl ${agent.color} flex items-center justify-center text-xl`}>
+                        {agent.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white font-medium text-sm">{agent.name}</div>
+                        <div className={`text-xs truncate ${
+                          agent.status === 'done' ? 'text-green-400' :
+                          agent.status === 'working' ? 'text-purple-400' : 'text-white/40'
+                        }`}>
+                          {agent.message}
+                        </div>
+                        {agent.status !== 'waiting' && (
+                          <Progress value={agent.progress} className="h-1 mt-1" />
+                        )}
+                      </div>
+                      {agent.status === 'done' && (
+                        <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                      )}
+                      {agent.status === 'working' && (
+                        <Loader2 className="w-5 h-5 text-purple-400 animate-spin flex-shrink-0" />
+                      )}
+                    </div>
                   ))}
                 </div>
-              </div>
-            </div>
 
-            <div>
-              <label className="text-white/80 text-sm mb-2 block">Стиль анимации</label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {styles.map((s) => (
-                  <Button
-                    key={s.value}
-                    variant={style === s.value ? 'default' : 'outline'}
-                    onClick={() => setStyle(s.value)}
-                    className={`h-auto py-3 flex-col ${style === s.value ? 'bg-purple-500' : 'border-white/20 text-white'}`}
-                  >
-                    <span className="text-2xl mb-1">{s.icon}</span>
-                    <span className="text-xs">{s.label}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-white/80 text-sm mb-2 block">Длительность: {duration} сек</label>
-              <input
-                type="range"
-                min="30"
-                max="180"
-                step="15"
-                value={duration}
-                onChange={(e) => setDuration(parseInt(e.target.value))}
-                className="w-full"
-              />
-              <div className="flex justify-between text-white/40 text-xs">
-                <span>30 сек</span>
-                <span>3 мин</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-white/80 text-sm mb-2 block">Описание идеи</label>
-              <Textarea
-                value={projectIdea}
-                onChange={(e) => setProjectIdea(e.target.value)}
-                placeholder="Кот-астронавт отправляется на Луну, чтобы найти пропавшего друга. По пути он встречает добрых инопланетян и учится верить в себя..."
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 min-h-[120px]"
-              />
-            </div>
-
-            <Button
-              onClick={generateAll}
-              disabled={isLoading || !projectName || !projectIdea}
-              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-12 text-lg"
-            >
-              {isLoading ? (
-                <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Генерация...</>
-              ) : (
-                <><Sparkles className="w-5 h-5 mr-2" /> Сгенерировать проект</>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Agents Status */}
-        <Card className="bg-white/5 border-white/10 mb-8">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-white text-sm flex items-center gap-2">
-              <Bot className="w-4 h-4" /> AI-Агенты
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {agents.map((agent) => (
-                <div key={agent.id} className={`p-3 rounded-lg border transition-all ${
-                  agent.status === 'done' ? 'bg-green-500/10 border-green-500/30' :
-                  agent.status === 'working' ? 'bg-purple-500/10 border-purple-500/30' :
-                  'bg-white/5 border-white/10'
-                }`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xl">{agent.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-white text-sm font-medium truncate">{agent.name}</div>
-                      <div className={`text-xs truncate ${
-                        agent.status === 'done' ? 'text-green-400' :
-                        agent.status === 'working' ? 'text-purple-400' : 'text-white/40'
-                      }`}>
-                        {agent.message}
-                      </div>
+                {/* Logs */}
+                {logs.length > 0 && (
+                  <div className="mt-4 p-3 bg-black/30 rounded-lg">
+                    <div className="text-xs text-white/50 mb-2">Логи процесса:</div>
+                    <div className="font-mono text-xs text-green-400 max-h-32 overflow-y-auto">
+                      {logs.slice(-10).map((log, i) => <div key={i}>{log}</div>)}
                     </div>
-                    {agent.status === 'done' && <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />}
-                    {agent.status === 'working' && <Loader2 className="w-4 h-4 text-purple-400 animate-spin flex-shrink-0" />}
                   </div>
-                  {agent.status !== 'waiting' && <Progress value={agent.progress} className="h-1" />}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Logs */}
-        {logs.length > 0 && (
-          <Card className="bg-white/5 border-white/10 mb-8">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-white text-sm">Логи процесса</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-black/30 p-3 rounded-lg font-mono text-xs text-green-400 max-h-32 overflow-y-auto">
-                {logs.map((log, i) => <div key={i}>{log}</div>)}
-              </div>
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
 
-        {/* Results */}
-        {script && (
-          <div className="space-y-6">
-            {/* Tab Navigation */}
+        {/* Agents Tab */}
+        {activeMainTab === 'agents' && (
+          <div>
+            <h3 className="text-xl font-bold text-white mb-1">ИИ-Агенты студии</h3>
+            <p className="text-white/50 mb-6">7 специализированных агентов работают вместе автономно</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {ALL_AGENTS.map((agent) => (
+                <Card key={agent.id} className="bg-white/5 border-white/10">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-xl ${agent.color} flex items-center justify-center text-2xl`}>
+                        {agent.icon}
+                      </div>
+                      <div>
+                        <CardTitle className="text-white text-lg">{agent.name}</CardTitle>
+                        <Badge variant="outline" className="border-green-500/30 text-green-400 text-xs">
+                          Активен
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-white/60 text-sm mb-3">{agent.desc}</p>
+                    <div className="pt-3 border-t border-white/10">
+                      <div className="text-xs text-white/50 mb-2">Возможности:</div>
+                      <ul className="text-xs text-white/70 space-y-1">
+                        {agent.id === 'producer' && (
+                          <>
+                            <li>✓ Планирование проекта</li>
+                            <li>✓ Создание задач</li>
+                            <li>✓ Контроль качества</li>
+                            <li>✓ Координация агентов</li>
+                          </>
+                        )}
+                        {agent.id === 'writer' && (
+                          <>
+                            <li>✓ Написание сценариев</li>
+                            <li>✓ Диалоги персонажей</li>
+                            <li>✓ Описание сцен</li>
+                            <li>✓ Адаптация стиля</li>
+                          </>
+                        )}
+                        {agent.id === 'artist' && (
+                          <>
+                            <li>✓ Концепт-арты</li>
+                            <li>✓ Раскадровки</li>
+                            <li>✓ Дизайн персонажей</li>
+                            <li>✓ Фоны и окружение</li>
+                          </>
+                        )}
+                        {agent.id === 'animator' && (
+                          <>
+                            <li>✓ Анимация персонажей</li>
+                            <li>✓ Синхронизация губ</li>
+                            <li>✓ Движение камеры</li>
+                            <li>✓ Спецэффекты</li>
+                          </>
+                        )}
+                        {agent.id === 'voice' && (
+                          <>
+                            <li>✓ Генерация голосов</li>
+                            <li>✓ Фоновая музыка</li>
+                            <li>✓ Звуковые эффекты</li>
+                            <li>✓ Эмоциональная окраска</li>
+                          </>
+                        )}
+                        {agent.id === 'editor' && (
+                          <>
+                            <li>✓ Монтаж видео</li>
+                            <li>✓ Добавление аудио</li>
+                            <li>✓ Субтитры</li>
+                            <li>✓ Экспорт</li>
+                          </>
+                        )}
+                        {agent.id === 'blender' && (
+                          <>
+                            <li>✓ 3D моделирование</li>
+                            <li>✓ Настройка освещения</li>
+                            <li>✓ Анимация камеры</li>
+                            <li>✓ Рендеринг</li>
+                          </>
+                        )}
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pipeline Tab */}
+        {activeMainTab === 'pipeline' && (
+          <div>
+            <h3 className="text-xl font-bold text-white mb-1">Пайплайн создания мультфильма</h3>
+            <p className="text-white/50 mb-6">От идеи до готового ролика — автоматически</p>
+            
+            <div className="space-y-4">
+              {[
+                { step: 1, icon: '💡', title: 'Идея пользователя', desc: 'Пользователь описывает идею мультфильма в свободной форме', agent: '👤 Вы', color: 'from-blue-500 to-blue-600' },
+                { step: 2, icon: '🤖', title: 'Продюсер создаёт план', desc: 'Разбиение на сцены, распределение задач между агентами', agent: '🤖 Продюсер', color: 'from-purple-500 to-purple-600' },
+                { step: 3, icon: '📝', title: 'Сценарист пишет сценарий', desc: 'Детальный сценарий с диалогами и описаниями сцен', agent: '📝 Сценарист', color: 'from-blue-500 to-blue-600' },
+                { step: 4, icon: '🎨', title: 'Художник создаёт раскадровку', desc: 'Генерация изображений для каждой сцены', agent: '🎨 Художник', color: 'from-pink-500 to-pink-600' },
+                { step: 5, icon: '🎬', title: 'Аниматор оживляет кадры', desc: 'Превращение статичных изображений в анимацию', agent: '🎬 Аниматор', color: 'from-orange-500 to-orange-600' },
+                { step: 6, icon: '🎤', title: 'Озвучка генерирует звук', desc: 'Голоса персонажей, фоновая музыка, эффекты', agent: '🎤 Озвучка', color: 'from-green-500 to-green-600' },
+                { step: 7, icon: '✂️', title: 'Монтажёр собирает ролик', desc: 'Финальный монтаж, наложение звука, экспорт', agent: '✂️ Монтажёр', color: 'from-red-500 to-red-600' },
+              ].map((item, i) => (
+                <div key={item.step}>
+                  <Card className="bg-white/5 border-white/10 flex items-center gap-4 p-4">
+                    <div className={`w-14 h-14 rounded-xl bg-gradient-to-r ${item.color} flex items-center justify-center text-2xl flex-shrink-0`}>
+                      {item.step}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white font-medium">{item.icon} {item.title}</div>
+                      <div className="text-white/50 text-sm">{item.desc}</div>
+                    </div>
+                    <div className="text-sm text-white/60 flex-shrink-0">{item.agent}</div>
+                  </Card>
+                  {i < 6 && <div className="text-center text-white/20 text-2xl py-1">↓</div>}
+                </div>
+              ))}
+              
+              <Card className="bg-white/5 border-2 border-green-500/50 flex items-center gap-4 p-4">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-2xl flex-shrink-0">
+                  ✅
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-white font-medium">🎥 Готовый мультфильм!</div>
+                  <div className="text-white/50 text-sm">Скачайте результат или отправьте на доработку</div>
+                </div>
+                <div className="text-sm text-green-400 flex-shrink-0">🎉 Готово</div>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* Results Section */}
+        {script && activeMainTab === 'demo' && (
+          <div className="mt-8 space-y-6">
             <div className="flex gap-2 border-b border-white/10 pb-2">
               {[
                 { id: 'overview', label: 'Обзор', icon: Film },
@@ -577,9 +762,9 @@ export default function AnimationStudio() {
               ].map((tab) => (
                 <Button
                   key={tab.id}
-                  variant={activeTab === tab.id ? 'default' : 'ghost'}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={activeTab === tab.id ? 'bg-purple-500' : 'text-white/60'}
+                  variant={activeResultTab === tab.id ? 'default' : 'ghost'}
+                  onClick={() => setActiveResultTab(tab.id as any)}
+                  className={activeResultTab === tab.id ? 'bg-purple-500' : 'text-white/60'}
                 >
                   <tab.icon className="w-4 h-4 mr-2" />
                   {tab.label}
@@ -588,20 +773,16 @@ export default function AnimationStudio() {
             </div>
 
             {/* Overview Tab */}
-            {activeTab === 'overview' && (
+            {activeResultTab === 'overview' && (
               <div className="space-y-4">
-                {/* Title & Logline */}
                 <Card className="bg-white/5 border-white/10">
                   <CardHeader>
                     <CardTitle className="text-2xl text-white">{script.title}</CardTitle>
                     <CardDescription className="text-lg text-white/70">{script.logline}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {script.synopsis && (
-                      <p className="text-white/80">{script.synopsis}</p>
-                    )}
+                    {script.synopsis && <p className="text-white/80">{script.synopsis}</p>}
 
-                    {/* Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div className="bg-white/5 p-3 rounded-lg text-center">
                         <Clock className="w-5 h-5 mx-auto text-purple-400 mb-1" />
@@ -625,10 +806,9 @@ export default function AnimationStudio() {
                       </div>
                     </div>
 
-                    {/* Themes */}
                     {script.themes && script.themes.length > 0 && (
                       <div>
-                        <h4 className="text-white/60 text-sm mb-2">Темы</h4>
+                        <div className="text-white/60 text-sm mb-2">Темы</div>
                         <div className="flex flex-wrap gap-2">
                           {script.themes.map((theme, i) => (
                             <Badge key={i} variant="outline" className="border-purple-500/30 text-purple-300">
@@ -639,7 +819,6 @@ export default function AnimationStudio() {
                       </div>
                     )}
 
-                    {/* Conflicts */}
                     {script.conflicts && (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {script.conflicts.main && (
@@ -663,7 +842,6 @@ export default function AnimationStudio() {
                       </div>
                     )}
 
-                    {/* Resolution & Moral */}
                     {script.resolution && (
                       <div className="bg-green-500/10 p-3 rounded-lg border border-green-500/20">
                         <div className="text-green-400 text-xs mb-1">Развязка</div>
@@ -679,75 +857,11 @@ export default function AnimationStudio() {
                     )}
                   </CardContent>
                 </Card>
-
-                {/* Visual Style */}
-                {script.visualStyle && (
-                  <Card className="bg-white/5 border-white/10">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-white text-sm">Визуальный стиль</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {script.visualStyle.colorPalette && (
-                          <div>
-                            <div className="text-white/40 text-xs mb-2">Цветовая палитра</div>
-                            <div className="flex gap-1">
-                              {script.visualStyle.colorPalette.map((color, i) => (
-                                <Badge key={i} variant="outline" className="border-white/20 text-white/80 text-xs">
-                                  {color}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {script.visualStyle.lighting && (
-                          <div>
-                            <div className="text-white/40 text-xs mb-1">Освещение</div>
-                            <div className="text-white text-sm">{script.visualStyle.lighting}</div>
-                          </div>
-                        )}
-                        {script.visualStyle.atmosphere && (
-                          <div>
-                            <div className="text-white/40 text-xs mb-1">Атмосфера</div>
-                            <div className="text-white text-sm">{script.visualStyle.atmosphere}</div>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Acts */}
-                {script.acts && script.acts.length > 0 && (
-                  <Card className="bg-white/5 border-white/10">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-white text-sm">Структура по актам</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {script.acts.map((act, i) => (
-                          <div key={i} className="flex items-center gap-3 p-2 bg-white/5 rounded-lg">
-                            <div className="w-8 h-8 rounded-full bg-purple-500/30 flex items-center justify-center text-white font-bold">
-                              {act.act}
-                            </div>
-                            <div className="flex-1">
-                              <div className="text-white font-medium">{act.name}</div>
-                              <div className="text-white/60 text-xs">{act.description}</div>
-                            </div>
-                            <Badge variant="outline" className="border-white/20 text-white/60">
-                              {act.duration}с
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
               </div>
             )}
 
             {/* Scenes Tab */}
-            {activeTab === 'scenes' && (
+            {activeResultTab === 'scenes' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-white text-lg font-bold">Раскадровка</h2>
@@ -766,20 +880,12 @@ export default function AnimationStudio() {
                           </div>
                         ) : scene.image ? (
                           <>
-                            <img
-                              src={scene.image}
-                              alt={scene.title}
-                              className="w-full h-full object-cover"
-                              onError={() => setFallbackImage(i)}
-                            />
+                            <img src={scene.image} alt={scene.title} className="w-full h-full object-cover" onError={() => setFallbackImage(i)} />
                             <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
                               {getTimeOfDayIcon(scene.timeOfDay)}
                               <span>Сцена {scene.number}</span>
                             </div>
-                            <button
-                              onClick={() => regenerateImage(i)}
-                              className="absolute top-2 right-2 bg-black/70 text-white p-1.5 rounded hover:bg-black/90"
-                            >
+                            <button onClick={() => regenerateImage(i)} className="absolute top-2 right-2 bg-black/70 text-white p-1.5 rounded hover:bg-black/90">
                               <RefreshCw className="w-4 h-4" />
                             </button>
                           </>
@@ -808,47 +914,16 @@ export default function AnimationStudio() {
                             </Badge>
                           )}
                         </div>
-
                         <p className="text-white/70 text-sm">{scene.description}</p>
-
-                        {scene.action && (
-                          <div className="bg-white/5 p-2 rounded text-sm">
-                            <span className="text-amber-400">Действие:</span>{' '}
-                            <span className="text-white/80">{scene.action}</span>
-                          </div>
-                        )}
-
-                        {scene.mood && (
-                          <div className="text-xs">
-                            <span className="text-purple-400">Настроение:</span>{' '}
-                            <span className="text-white/60">{scene.mood}</span>
-                          </div>
-                        )}
-
                         {scene.dialogue && scene.dialogue.length > 0 && (
                           <div className="space-y-2 pt-2 border-t border-white/10">
-                            {scene.dialogue.map((d, di) => (
+                            {scene.dialogue.slice(0, 3).map((d, di) => (
                               <div key={di} className="text-sm">
                                 <span className="text-purple-300 font-medium">{d.character}</span>
                                 {d.emotion && <span className="text-purple-400/60 text-xs"> ({d.emotion})</span>}
                                 <p className="text-white/70 mt-0.5">"{d.line}"</p>
                               </div>
                             ))}
-                          </div>
-                        )}
-
-                        {(scene.music || scene.visualEffects) && (
-                          <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">
-                            {scene.music && (
-                              <Badge variant="outline" className="border-blue-500/30 text-blue-300 text-xs">
-                                🎵 {scene.music}
-                              </Badge>
-                            )}
-                            {scene.visualEffects && (
-                              <Badge variant="outline" className="border-cyan-500/30 text-cyan-300 text-xs">
-                                ✨ {scene.visualEffects}
-                              </Badge>
-                            )}
                           </div>
                         )}
                       </CardContent>
@@ -859,7 +934,7 @@ export default function AnimationStudio() {
             )}
 
             {/* Characters Tab */}
-            {activeTab === 'characters' && (
+            {activeResultTab === 'characters' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {script.characters?.map((char, i) => (
                   <Card key={i} className="bg-white/5 border-white/10">
@@ -874,8 +949,7 @@ export default function AnimationStudio() {
                               char.role === 'antagonist' ? 'border-red-500/30 text-red-400' :
                               'border-blue-500/30 text-blue-400'
                             }`}>
-                              {char.role === 'protagonist' ? 'Герой' : 
-                               char.role === 'antagonist' ? 'Антагонист' : 'Второстепенный'}
+                              {char.role === 'protagonist' ? 'Герой' : char.role === 'antagonist' ? 'Антагонист' : 'Второстепенный'}
                             </Badge>
                           )}
                         </div>
@@ -883,14 +957,12 @@ export default function AnimationStudio() {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <p className="text-white/70 text-sm">{char.description}</p>
-                      
                       {char.appearance && (
                         <div>
                           <div className="text-white/40 text-xs mb-1">Внешность</div>
                           <p className="text-white/60 text-sm">{char.appearance}</p>
                         </div>
                       )}
-
                       {char.personality && char.personality.length > 0 && (
                         <div>
                           <div className="text-white/40 text-xs mb-1">Характер</div>
@@ -903,18 +975,10 @@ export default function AnimationStudio() {
                           </div>
                         </div>
                       )}
-
                       {char.motivation && (
                         <div className="bg-amber-500/10 p-2 rounded border border-amber-500/20">
                           <div className="text-amber-400 text-xs">Мотивация</div>
                           <p className="text-white/80 text-sm">{char.motivation}</p>
-                        </div>
-                      )}
-
-                      {char.arc && (
-                        <div className="bg-purple-500/10 p-2 rounded border border-purple-500/20">
-                          <div className="text-purple-400 text-xs">Арка персонажа</div>
-                          <p className="text-white/80 text-sm">{char.arc}</p>
                         </div>
                       )}
                     </CardContent>
@@ -925,30 +989,31 @@ export default function AnimationStudio() {
 
             {/* Export Button */}
             <div className="flex justify-center pt-4">
-              <Button
-                size="lg"
-                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-              >
-                <Play className="w-5 h-5 mr-2" /> Экспортировать проект
+              <Button size="lg" className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600">
+                <Download className="w-5 h-5 mr-2" /> Экспортировать проект
               </Button>
             </div>
           </div>
         )}
 
         {/* Empty State */}
-        {!script && !isLoading && (
-          <Card className="bg-white/5 border-white/10">
-            <CardContent className="py-16">
+        {!script && !isLoading && activeMainTab === 'demo' && (
+          <Card className="bg-white/5 border-white/10 mt-6">
+            <CardContent className="py-12">
               <div className="text-center text-white/40">
                 <Bot className="w-16 h-16 mx-auto mb-4 opacity-50" />
                 <h3 className="text-xl font-medium text-white/60 mb-2">Готовы создать шедевр?</h3>
-                <p>Опишите идею и нажмите "Сгенерировать проект"</p>
-                <p className="text-sm mt-2">AI создаст полноценный сценарий с персонажами, диалогами и раскадровкой</p>
+                <p>Опишите идею и нажмите "Создать проект"</p>
               </div>
             </CardContent>
           </Card>
         )}
       </main>
+
+      {/* Footer */}
+      <footer className="text-center py-6 text-white/40 text-sm">
+        AI Animation Studio © 2024 — Мультиагентная анимационная студия
+      </footer>
     </div>
   );
 }
