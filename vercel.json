@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "src/app/api/work/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/agents/scenarist-grok/route.ts": {
+      "maxDuration": 90
+    },
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
+}

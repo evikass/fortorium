@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Animation Studio - Мультиагентная Анимационная Студия</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --purple-500: #a855f7;
+            --purple-600: #9333ea;
+            --purple-900: #3b0764;
+            --pink-500: #ec4899;
+            --pink-600: #db2777;
+            --cyan-500: #06b6d4;
+            --green-500: #22c55e;
+            --orange-500: #f97316;
+            --red-500: #ef4444;
+            --blue-500: #3b82f6;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #3b0764 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--purple-500), var(--pink-500));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .logo-text h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .logo-text p {
+            font-size: 0.75rem;
+            opacity: 0.6;
+        }
+
+        .header-agents {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .agent-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            opacity: 0.8;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .agent-icon:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        /* Main */
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Hero */
+        .hero {
+            text-align: center;
+            padding: 4rem 0;
+        }
+
+        .hero h2 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #fff, var(--purple-500), var(--pink-500));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            opacity: 0.7;
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--purple-500), var(--pink-500));
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Tabs */
+        .tabs {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .tab.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        /* Cards */
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: border-color 0.2s;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .card p {
+            opacity: 0.6;
+            font-size: 0.9rem;
+        }
+
+        /* Agents Grid */
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.8;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--purple-500);
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-select option {
+            background: #1e1e2e;
+        }
+
+        /* Pipeline */
+        .pipeline {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .pipeline-step {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s;
+        }
+
+        .pipeline-step:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .step-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-content h4 {
+            margin-bottom: 0.25rem;
+        }
+
+        .step-content p {
+            font-size: 0.85rem;
+            opacity: 0.6;
+        }
+
+        .step-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .step-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Style Cards */
+        .styles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .style-card {
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .style-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .style-card.selected {
+            border-color: var(--purple-500);
+            background: rgba(168, 85, 247, 0.1);
+        }
+
+        .style-card h4 {
+            margin-bottom: 0.25rem;
+        }
+
+        .style-card p {
+            font-size: 0.75rem;
+            opacity: 0.6;
+        }
+
+        /* Tabs Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Grid */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .hero h2 {
+                font-size: 2rem;
+            }
+            .header-agents {
+                display: none;
+            }
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-outline {
+            border: 1px solid currentColor;
+        }
+
+        .badge-green {
+            color: var(--green-500);
+        }
+
+        .badge-purple {
+            color: var(--purple-500);
+        }
+
+        /* Checkbox */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .checkbox-group input {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            line-height: 1.5;
+        }
+
+        .code-block .comment {
+            color: #6b7280;
+        }
+
+        .code-block .keyword {
+            color: #c084fc;
+        }
+
+        .code-block .string {
+            color: #86efac;
+        }
+
+        .code-block .function {
+            color: #93c5fd;
+        }
+
+        /* Alert */
+        .alert {
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .alert-icon {
+            font-size: 1.25rem;
+        }
+
+        .alert h4 {
+            color: var(--cyan-500);
+            margin-bottom: 0.25rem;
+        }
+
+        .alert p {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 3rem;
+            opacity: 0.6;
+            font-size: 0.9rem;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        /* Demo Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: linear-gradient(135deg, #1e1e2e, #2d1f3d);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .modal h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal p {
+            opacity: 0.7;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">🪄</div>
+                <div class="logo-text">
+                    <h1>AI Animation Studio</h1>
+                    <p>Мультиагентная анимационная студия без людей</p>
+                </div>
+            </div>
+            <div class="header-agents">
+                <div class="agent-icon" style="background: var(--purple-500)" title="Продюсер">🤖</div>
+                <div class="agent-icon" style="background: var(--blue-500)" title="Сценарист">📝</div>
+                <div class="agent-icon" style="background: var(--pink-500)" title="Художник">🎨</div>
+                <div class="agent-icon" style="background: var(--orange-500)" title="Аниматор">🎬</div>
+                <div class="agent-icon" style="background: var(--green-500)" title="Озвучка">🎤</div>
+                <div class="agent-icon" style="background: var(--red-500)" title="Монтажёр">✂️</div>
+                <div class="agent-icon" style="background: var(--cyan-500)" title="Blender">💻</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="main">
+        <!-- Hero -->
+        <section class="hero fade-in">
+            <h2>Создавайте мультфильмы с помощью ИИ</h2>
+            <p>Полностью автономная студия: от идеи до готового ролика. 7 ИИ-агентов работают вместе без участия людей.</p>
+            <div class="hero-buttons">
+                <a href="https://github.com/evikass/fortorium_01" class="btn btn-primary">
+                    📥 Исходный код
+                </a>
+                <button class="btn btn-secondary" onclick="showDemo()">
+                    ✨ Попробовать демо
+                </button>
+            </div>
+        </section>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('demo')">🎮 Демо</button>
+            <button class="tab" onclick="switchTab('agents')">🤖 Агенты</button>
+            <button class="tab" onclick="switchTab('pipeline')">🔄 Пайплайн</button>
+            <button class="tab" onclick="switchTab('install')">📦 Установка</button>
+        </div>
+
+        <!-- Demo Tab -->
+        <div id="tab-demo" class="tab-content active">
+            <div class="grid-2">
+                <!-- New Project Form -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, var(--purple-500), var(--pink-500))">➕</div>
+                        <div>
+                            <h3>Новый проект</h3>
+                            <p>Опишите идею для мультфильма</p>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Название</label>
+                        <input type="text" class="form-input" id="project-title" placeholder="Кот-астронавт">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Описание идеи</label>
+                        <textarea class="form-textarea" id="project-desc" placeholder="Кот по имени Мурзик мечтает полететь на Луну. Однажды он находит старую ракету на свалке..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Стиль анимации</label>
+                        <div class="styles-grid">
+                            <div class="style-card selected" onclick="selectStyle(this)" data-style="ghibli">
+                                <h4>🏯 Ghibli</h4>
+                                <p>Миядзаки, акварель</p>
+                            </div>
+                            <div class="style-card" onclick="selectStyle(this)" data-style="disney">
+                                <h4>🏰 Disney</h4>
+                                <p>Классика 2D</p>
+                            </div>
+                            <div class="style-card" onclick="selectStyle(this)" data-style="pixar">
+                                <h4>🧸 Pixar</h4>
+                                <p>Современный 3D</p>
+                            </div>
+                            <div class="style-card" onclick="selectStyle(this)" data-style="anime">
+                                <h4>⚡ Anime</h4>
+                                <p>Японский стиль</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Длительность (секунды)</label>
+                        <input type="number" class="form-input" id="project-duration" value="30" min="10" max="300">
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="use-blender">
+                            <label for="use-blender">Использовать Blender (3D сцены)</label>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" style="width: 100%" onclick="createProject()">
+                        ✨ Создать проект
+                    </button>
+                </div>
+
+                <!-- Pipeline Preview -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: linear-gradient(135deg, var(--green-500), #10b981)">▶️</div>
+                        <div>
+                            <h3>Пайплайн</h3>
+                            <p>Шаги создания мультфильма</p>
+                        </div>
+                    </div>
+
+                    <div class="pipeline">
+                        <div class="pipeline-step">
+                            <div class="step-icon" style="background: var(--blue-500)">📝</div>
+                            <div class="step-content">
+                                <h4>Сценарий</h4>
+                                <p>Написание сценария и диалогов</p>
+                            </div>
+                            <span class="badge badge-outline badge-green">Готово</span>
+                        </div>
+
+                        <div class="pipeline-step">
+                            <div class="step-icon" style="background: var(--pink-500)">🎨</div>
+                            <div class="step-content">
+                                <h4>Раскадровка</h4>
+                                <p>Генерация изображений</p>
+                            </div>
+                            <span class="badge badge-outline badge-purple">В процессе</span>
+                        </div>
+
+                        <div class="pipeline-step">
+                            <div class="step-icon" style="background: var(--orange-500)">🎬</div>
+                            <div class="step-content">
+                                <h4>Анимация</h4>
+                                <p>Оживление кадров</p>
+                            </div>
+                            <button class="step-btn">Запустить</button>
+                        </div>
+
+                        <div class="pipeline-step">
+                            <div class="step-icon" style="background: var(--green-500)">🎤</div>
+                            <div class="step-content">
+                                <h4>Озвучка</h4>
+                                <p>Голоса и музыка</p>
+                            </div>
+                            <button class="step-btn">Запустить</button>
+                        </div>
+
+                        <div class="pipeline-step">
+                            <div class="step-icon" style="background: var(--red-500)">✂️</div>
+                            <div class="step-content">
+                                <h4>Монтаж</h4>
+                                <p>Сборка финального ролика</p>
+                            </div>
+                            <button class="step-btn">Запустить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agents Tab -->
+        <div id="tab-agents" class="tab-content">
+            <h3 style="margin-bottom: 0.5rem;">ИИ-Агенты студии</h3>
+            <p style="opacity: 0.6; margin-bottom: 2rem;">7 специализированных агентов работают вместе автономно</p>
+
+            <div class="agents-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--purple-500)">🤖</div>
+                        <div>
+                            <h3>Продюсер</h3>
+                            <span class="badge badge-outline badge-green">Активен</span>
+                        </div>
+                    </div>
+                    <p>Координирует весь процесс создания, распределяет задачи между агентами</p>
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1)">
+                        <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem">Возможности:</h4>
+                        <ul style="font-size: 0.85rem; opacity: 0.7; list-style: none;">
+                            <li>✓ Планирование проекта</li>
+                            <li>✓ Создание задач</li>
+                            <li>✓ Контроль качества</li>
+                            <li>✓ Координация агентов</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--blue-500)">📝</div>
+                        <div>
+                            <h3>Сценарист</h3>
+                            <span class="badge badge-outline badge-green">Активен</span>
+                        </div>
+                    </div>
+                    <p>Пишет сценарии, диалоги и описания сцен для мультфильмов</p>
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1)">
+                        <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem">Возможности:</h4>
+                        <ul style="font-size: 0.85rem; opacity: 0.7; list-style: none;">
+                            <li>✓ Написание сценариев</li>
+                            <li>✓ Диалоги персонажей</li>
+                            <li>✓ Описание сцен</li>
+                            <li>✓ Адаптация стиля</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--pink-500)">🎨</div>
+                        <div>
+                            <h3>Художник</h3>
+                            <span class="badge badge-outline badge-green">Активен</span>
+                        </div>
+                    </div>
+                    <p>Создаёт концепт-арты, персонажей, раскадровки и фоны</p>
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1)">
+                        <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem">Возможности:</h4>
+                        <ul style="font-size: 0.85rem; opacity: 0.7; list-style: none;">
+                            <li>✓ Концепт-арты</li>
+                            <li>✓ Раскадровки</li>
+                            <li>✓ Дизайн персонажей</li>
+                            <li>✓ Фоны и окружение</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--orange-500)">🎬</div>
+                        <div>
+                            <h3>Аниматор</h3>
+                            <span class="badge badge-outline badge-green">Активен</span>
+                        </div>
+                    </div>
+                    <p>Оживляет статичные кадры в короткие видео-клипы</p>
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1)">
+                        <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem">Возможности:</h4>
+                        <ul style="font-size: 0.85rem; opacity: 0.7; list-style: none;">
+                            <li>✓ Анимация персонажей</li>
+                            <li>✓ Синхронизация губ</li>
+                            <li>✓ Движение камеры</li>
+                            <li>✓ Спецэффекты</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--green-500)">🎤</div>
+                        <div>
+                            <h3>Озвучка</h3>
+                            <span class="badge badge-outline badge-green">Активен</span>
+                        </div>
+                    </div>
+                    <p>Генерирует голоса персонажей, музыку и звуковые эффекты</p>
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1)">
+                        <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem">Возможности:</h4>
+                        <ul style="font-size: 0.85rem; opacity: 0.7; list-style: none;">
+                            <li>✓ Генерация голосов</li>
+                            <li>✓ Фоновая музыка</li>
+                            <li>✓ Звуковые эффекты</li>
+                            <li>✓ Эмоциональная окраска</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--red-500)">✂️</div>
+                        <div>
+                            <h3>Монтажёр</h3>
+                            <span class="badge badge-outline badge-green">Активен</span>
+                        </div>
+                    </div>
+                    <p>Собирает финальный ролик, накладывает звук и эффекты</p>
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1)">
+                        <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem">Возможности:</h4>
+                        <ul style="font-size: 0.85rem; opacity: 0.7; list-style: none;">
+                            <li>✓ Монтаж видео</li>
+                            <li>✓ Добавление аудио</li>
+                            <li>✓ Субтитры</li>
+                            <li>✓ Экспорт</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--cyan-500)">💻</div>
+                        <div>
+                            <h3>Blender Оператор</h3>
+                            <span class="badge badge-outline badge-green">Активен</span>
+                        </div>
+                    </div>
+                    <p>Управляет Blender на домашнем компьютере для создания 3D сцен</p>
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1)">
+                        <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem">Возможности:</h4>
+                        <ul style="font-size: 0.85rem; opacity: 0.7; list-style: none;">
+                            <li>✓ 3D моделирование</li>
+                            <li>✓ Настройка освещения</li>
+                            <li>✓ Анимация камеры</li>
+                            <li>✓ Рендеринг</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pipeline Tab -->
+        <div id="tab-pipeline" class="tab-content">
+            <h3 style="margin-bottom: 0.5rem;">Пайплайн создания мультфильма</h3>
+            <p style="opacity: 0.6; margin-bottom: 2rem;">От идеи до готового ролика — автоматически</p>
+
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="card" style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px;">1</div>
+                    <div style="flex: 1">
+                        <h4>💡 Идея пользователя</h4>
+                        <p style="opacity: 0.6; font-size: 0.9rem;">Пользователь описывает идею мультфильма в свободной форме</p>
+                    </div>
+                    <span style="color: var(--green-500)">👤 Вы</span>
+                </div>
+
+                <div style="text-align: center; opacity: 0.3;">↓</div>
+
+                <div class="card" style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #a855f7, #7c3aed); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px;">2</div>
+                    <div style="flex: 1">
+                        <h4>🤖 Продюсер создаёт план</h4>
+                        <p style="opacity: 0.6; font-size: 0.9rem;">Разбиение на сцены, распределение задач между агентами</p>
+                    </div>
+                    <span style="color: var(--purple-500)">🤖 Продюсер</span>
+                </div>
+
+                <div style="text-align: center; opacity: 0.3;">↓</div>
+
+                <div class="card" style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px;">3</div>
+                    <div style="flex: 1">
+                        <h4>📝 Сценарист пишет сценарий</h4>
+                        <p style="opacity: 0.6; font-size: 0.9rem;">Детальный сценарий с диалогами и описаниями сцен</p>
+                    </div>
+                    <span style="color: var(--blue-500)">📝 Сценарист</span>
+                </div>
+
+                <div style="text-align: center; opacity: 0.3;">↓</div>
+
+                <div class="card" style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #ec4899, #db2777); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px;">4</div>
+                    <div style="flex: 1">
+                        <h4>🎨 Художник создаёт раскадровку</h4>
+                        <p style="opacity: 0.6; font-size: 0.9rem;">Генерация изображений для каждой сцены через DALL-E</p>
+                    </div>
+                    <span style="color: var(--pink-500)">🎨 Художник</span>
+                </div>
+
+                <div style="text-align: center; opacity: 0.3;">↓</div>
+
+                <div class="card" style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #f97316, #ea580c); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px;">5</div>
+                    <div style="flex: 1">
+                        <h4>🎬 Аниматор оживляет кадры</h4>
+                        <p style="opacity: 0.6; font-size: 0.9rem;">Превращение статичных изображений в анимацию</p>
+                    </div>
+                    <span style="color: var(--orange-500)">🎬 Аниматор</span>
+                </div>
+
+                <div style="text-align: center; opacity: 0.3;">↓</div>
+
+                <div class="card" style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #22c55e, #16a34a); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px;">6</div>
+                    <div style="flex: 1">
+                        <h4>🎤 Озвучка генерирует звук</h4>
+                        <p style="opacity: 0.6; font-size: 0.9rem;">Голоса персонажей, фоновая музыка, эффекты</p>
+                    </div>
+                    <span style="color: var(--green-500)">🎤 Озвучка</span>
+                </div>
+
+                <div style="text-align: center; opacity: 0.3;">↓</div>
+
+                <div class="card" style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px;">7</div>
+                    <div style="flex: 1">
+                        <h4>✂️ Монтажёр собирает ролик</h4>
+                        <p style="opacity: 0.6; font-size: 0.9rem;">Финальный монтаж, наложение звука, экспорт</p>
+                    </div>
+                    <span style="color: var(--red-500)">✂️ Монтажёр</span>
+                </div>
+
+                <div style="text-align: center; opacity: 0.3;">↓</div>
+
+                <div class="card" style="display: flex; align-items: center; gap: 1.5rem; border: 2px solid var(--green-500);">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #22c55e, #16a34a); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px;">✅</div>
+                    <div style="flex: 1">
+                        <h4>🎥 Готовый мультфильм!</h4>
+                        <p style="opacity: 0.6; font-size: 0.9rem;">Скачайте результат или отправьте на доработку</p>
+                    </div>
+                    <span style="color: var(--green-500)">🎉 Готово</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Install Tab -->
+        <div id="tab-install" class="tab-content">
+            <h3 style="margin-bottom: 0.5rem;">Установка</h3>
+            <p style="opacity: 0.6; margin-bottom: 2rem;">Запустите студию на своём компьютере</p>
+
+            <div class="alert">
+                <span class="alert-icon">💻</span>
+                <div>
+                    <h4>Требования</h4>
+                    <p>Node.js 18+, Bun runtime, Git</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h4 style="margin-bottom: 1rem;">🚀 Быстрый старт</h4>
+                <div class="code-block">
+                    <span class="comment"># Клонирование репозитория</span><br>
+                    git clone https://github.com/evikass/fortorium_01.git<br>
+                    cd fortorium_01<br><br>
+                    <span class="comment"># Установка зависимостей</span><br>
+                    bun install<br><br>
+                    <span class="comment"># Инициализация базы данных</span><br>
+                    bun run db:push<br><br>
+                    <span class="comment"># Запуск development сервера</span><br>
+                    bun run dev
+                </div>
+            </div>
+
+            <div class="card">
+                <h4 style="margin-bottom: 1rem;">🔧 Интеграция с Blender</h4>
+                <p style="opacity: 0.7; margin-bottom: 1rem; font-size: 0.9rem;">Для 3D сцен создайте файл blender_server.py на домашнем компьютере:</p>
+                <div class="code-block">
+                    <span class="comment"># blender_server.py</span><br>
+                    <span class="keyword">from</span> http.server <span class="keyword">import</span> HTTPServer, BaseHTTPRequestHandler<br>
+                    <span class="keyword">import</span> bpy<br>
+                    <span class="keyword">import</span> json<br><br>
+                    <span class="keyword">class</span> <span class="function">BlenderHandler</span>(BaseHTTPRequestHandler):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">def</span> <span class="function">do_POST</span>(self):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;content_length = int(self.headers[<span class="string">'Content-Length'</span>])<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = json.loads(self.rfile.read(content_length))<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;exec(data[<span class="string">'script'</span>], {<span class="string">'bpy'</span>: bpy})<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.send_response(200)<br><br>
+                    <span class="comment"># Запуск:</span><br>
+                    blender -b -P blender_server.py
+                </div>
+            </div>
+
+            <div class="card">
+                <h4 style="margin-bottom: 1rem;">📦 Стек технологий</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                    <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">⚛️</div>
+                        <div style="font-weight: 600">Next.js 16</div>
+                        <div style="font-size: 0.75rem; opacity: 0.6">React Framework</div>
+                    </div>
+                    <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🔷</div>
+                        <div style="font-weight: 600">TypeScript</div>
+                        <div style="font-size: 0.75rem; opacity: 0.6">Type Safety</div>
+                    </div>
+                    <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🎨</div>
+                        <div style="font-weight: 600">Tailwind CSS</div>
+                        <div style="font-size: 0.75rem; opacity: 0.6">Styling</div>
+                    </div>
+                    <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🗄️</div>
+                        <div style="font-weight: 600">Prisma</div>
+                        <div style="font-size: 0.75rem; opacity: 0.6">ORM + SQLite</div>
+                    </div>
+                    <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🤖</div>
+                        <div style="font-weight: 600">z-ai-sdk</div>
+                        <div style="font-size: 0.75rem; opacity: 0.6">GPT-4, DALL-E, TTS</div>
+                    </div>
+                    <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🔌</div>
+                        <div style="font-weight: 600">WebSocket</div>
+                        <div style="font-size: 0.75rem; opacity: 0.6">Real-time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>AI Animation Studio © 2024 | <a href="https://github.com/evikass/fortorium_01" style="color: var(--purple-500)">GitHub</a></p>
+    </footer>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <div class="modal-icon">🎬</div>
+            <h3>Проект создан!</h3>
+            <p id="modal-text">В полной версии агенты начнут работу над вашим мультфильмом.</p>
+            <button class="btn btn-primary" onclick="closeModal()">Понятно</button>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+
+        // Style selection
+        function selectStyle(element) {
+            document.querySelectorAll('.style-card').forEach(c => c.classList.remove('selected'));
+            element.classList.add('selected');
+        }
+
+        // Create project demo
+        function createProject() {
+            const title = document.getElementById('project-title').value || 'Мой мультфильм';
+            const desc = document.getElementById('project-desc').value || 'Без описания';
+            const duration = document.getElementById('project-duration').value;
+            const blender = document.getElementById('use-blender').checked;
+            const style = document.querySelector('.style-card.selected')?.dataset.style || 'disney';
+
+            document.getElementById('modal-text').innerHTML = `
+                <strong>${title}</strong><br>
+                <span style="opacity: 0.7">${desc.substring(0, 50)}...</span><br><br>
+                <span style="font-size: 0.85rem">
+                    Стиль: ${style}<br>
+                    Длительность: ${duration}с<br>
+                    Blender: ${blender ? '✓' : '✗'}
+                </span>
+            `;
+
+            document.getElementById('modal').classList.add('active');
+        }
+
+        // Show demo
+        function showDemo() {
+            document.getElementById('project-title').value = 'Кот-астронавт';
+            document.getElementById('project-desc').value = 'Кот по имени Мурзик мечтает полететь на Луну. Однажды он находит старую ракету на свалке и решает осуществить свою мечту...';
+            document.getElementById('project-duration').value = '45';
+
+            // Scroll to form
+            document.querySelector('.form-input').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        // Close modal on overlay click
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
+</body</html>

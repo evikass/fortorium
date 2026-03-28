@@ -1,0 +1,11 @@
+{
+  "name": "blender-service",
+  "version": "1.0.0",
+  "description": "WebSocket service for Blender integration",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "bun --hot index.ts",
+    "start": "bun index.ts"
+  },
+  "dependencies": {}
+}
