@@ -104,7 +104,7 @@ export default function AnimationStudio() {
   const [style, setStyle] = useState('ghibli');
   const [genre, setGenre] = useState('приключения');
   const [duration, setDuration] = useState(90);
-  const [useGrok, setUseGrok] = useState(true); // true = Grok, false = обычный
+  const [useGrok, setUseGrok] = useState(false); // false = стандартный API (бесплатный)
   const [isLoading, setIsLoading] = useState(false);
   const [script, setScript] = useState<Script | null>(null);
   const [currentPhase, setCurrentPhase] = useState<string>('');
@@ -471,44 +471,6 @@ export default function AnimationStudio() {
                     <span className="text-xs">{s.label}</span>
                   </Button>
                 ))}
-              </div>
-            </div>
-
-            {/* Переключатель сценариста */}
-            <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 p-4 rounded-lg border border-white/10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-white font-medium flex items-center gap-2">
-                    <span className="text-xl">🤖</span>
-                    Сценарист
-                  </label>
-                  <p className="text-white/50 text-xs mt-1">
-                    {useGrok 
-                      ? 'Grok AI (xAI) — быстрый и качественный' 
-                      : 'Стандартный API — резервный вариант'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm ${!useGrok ? 'text-white' : 'text-white/40'}`}>
-                    Стандарт
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setUseGrok(!useGrok)}
-                    className={`relative w-14 h-7 rounded-full transition-colors ${
-                      useGrok ? 'bg-purple-500' : 'bg-white/20'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform ${
-                        useGrok ? 'left-8' : 'left-1'
-                      }`}
-                    />
-                  </button>
-                  <span className={`text-sm ${useGrok ? 'text-white' : 'text-white/40'}`}>
-                    Grok AI
-                  </span>
-                </div>
               </div>
             </div>
 
