@@ -133,7 +133,8 @@ export default function AnimationStudio() {
   const [script, setScript] = useState<Script | null>(null);
   const [currentPhase, setCurrentPhase] = useState<string>('');
   const [logs, setLogs] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'scenes' | 'characters' | 'svg'>('overview');
+  const [mainTab, setMainTab] = useState<'script' | 'svg'>('script');
+  const [activeTab, setActiveTab] = useState<'overview' | 'scenes' | 'characters'>('overview');
   const [agents, setAgents] = useState<AgentStatus[]>([
     { id: 'writer', name: 'Сценарист', icon: '📝', status: 'waiting', progress: 0, message: 'Ожидает задачу' },
     { id: 'artist', name: 'Художник', icon: '🎨', status: 'waiting', progress: 0, message: 'Ожидает сценарий' },
@@ -402,9 +403,8 @@ export default function AnimationStudio() {
     const time = new Date().toLocaleTimeString();
     setSvgLogs([`[${time}] 🎨 Начинаю генерацию SVG...`]);
     setSvgLogs(prev => [...prev, `Тип задачи: ${svgTaskType}`]);
-    if (svgTaskDescription) {
-      setSvgLogs(prev => [...prev, `ТЗ: ${svgTaskDescription.substring(0, 100)}...`]);
-    }
+    setSvgLogs(prev => [...prev, `Стиль: ${svgStyle}`]);
+    setSvgLogs(prev => [...prev, `Размер: ${svgDimensions.width}x${svgDimensions.height}`]);
     
     // Initialize SVG agents
     const svgAgentList = [
@@ -424,6 +424,8 @@ export default function AnimationStudio() {
     setSvgAgents(svgAgentList.map(a => ({ ...a, status: 'working' as const, progress: 50, message: 'Генерация...' })));
     
     try {
+      setSvgLogs(prev => [...prev, `📡 Отправляю запрос к API...`]);
+      
       const res = await fetch('/api/agents/svg/coordinator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -443,17 +445,22 @@ export default function AnimationStudio() {
       
       const data = await res.json();
       
-      if (data.success) {
+      setSvgLogs(prev => [...prev, `📥 Получен ответ: success=${data.success}`]);
+      setSvgLogs(prev => [...prev, `📦 finalScene есть: ${!!data.finalScene}`]);
+      setSvgLogs(prev => [...prev, `📦 SVG длина: ${data.finalScene?.svg?.length || 0} символов`]);
+      
+      if (data.success && data.finalScene?.svg) {
         setSvgResult(data);
         setSvgAgents(prev => prev.map(a => ({ ...a, status: 'done' as const, progress: 100, message: 'Готово!' })));
         setSvgLogs(prev => [...prev, `✅ Создано ${data.storyboard?.frames?.length || 11} слоёв`]);
         setSvgLogs(prev => [...prev, `⏱️ Время: ${data.totalTime}мс`]);
+        setSvgLogs(prev => [...prev, `🎉 SVG успешно сформирован!`]);
       } else {
-        setSvgLogs(prev => [...prev, `❌ Ошибка: ${data.error || 'Неизвестная ошибка'}`]);
+        setSvgLogs(prev => [...prev, `❌ Ошибка: ${data.error || 'SVG не сформирован'}`]);
         setSvgAgents(prev => prev.map(a => ({ ...a, status: 'waiting' as const, progress: 0, message: 'Ошибка' })));
       }
     } catch (error: any) {
-      setSvgLogs(prev => [...prev, `❌ Ошибка: ${error.message}`]);
+      setSvgLogs(prev => [...prev, `❌ Ошибка сети: ${error.message}`]);
       setSvgAgents(prev => prev.map(a => ({ ...a, status: 'waiting' as const, progress: 0, message: 'Ошибка' })));
     } finally {
       setSvgLoading(false);
@@ -572,7 +579,7 @@ export default function AnimationStudio() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white tracking-wide">ФОРТОРИУМ</h1>
-              <p className="text-xs text-white/50">AI Анимационная Студия v4.8.0</p>
+              <p className="text-xs text-white/50">AI Анимационная Студия v{CLIENT_VERSION}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -587,6 +594,27 @@ export default function AnimationStudio() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Main Tabs */}
+        <div className="flex gap-2 mb-6 border-b border-white/10 pb-2">
+          <Button
+            variant={mainTab === 'script' ? 'default' : 'ghost'}
+            onClick={() => setMainTab('script')}
+            className={mainTab === 'script' ? 'bg-purple-500' : 'text-white/60'}
+          >
+            <Film className="w-4 h-4 mr-2" /> Сценарий
+          </Button>
+          <Button
+            variant={mainTab === 'svg' ? 'default' : 'ghost'}
+            onClick={() => setMainTab('svg')}
+            className={mainTab === 'svg' ? 'bg-purple-500' : 'text-white/60'}
+          >
+            <Wand2 className="w-4 h-4 mr-2" /> SVG Генератор
+          </Button>
+        </div>
+
+        {/* Script Tab Content */}
+        {mainTab === 'script' && (
+        <>
         {/* Project Form */}
         <Card className="bg-white/5 border-white/10 mb-8">
           <CardHeader>
@@ -771,9 +799,313 @@ export default function AnimationStudio() {
             </CardContent>
           </Card>
         )}
+        </> 
+        )}
 
-        {/* Results */}
-        {script && (
+        {/* SVG Tab Content */}
+        {mainTab === 'svg' && (
+        <>
+        <Card className="bg-white/5 border-white/10 mb-8">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Wand2 className="w-5 h-5" /> SVG Генератор
+            </CardTitle>
+            <CardDescription className="text-white/60">
+              Создание SVG-раскадровки с помощью 11 специализированных агентов
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Task Type Selection */}
+            <div>
+              <label className="text-white/80 text-sm mb-2 block">Тип задачи</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: 'scene', label: '🎬 Сцена', desc: 'Кинематографическая сцена' },
+                  { id: 'banner', label: '📐 Баннер', desc: 'Рекламный баннер' },
+                  { id: 'ad', label: '📢 Реклама', desc: 'Рекламный креатив' },
+                  { id: 'social', label: '📱 Соцсети', desc: 'Пост для соцсетей' },
+                  { id: 'poster', label: '🖼️ Постер', desc: 'Афиша или плакат' },
+                ].map((t) => (
+                  <Button
+                    key={t.id}
+                    size="sm"
+                    variant={svgTaskType === t.id ? 'default' : 'outline'}
+                    onClick={() => setSvgTaskType(t.id as any)}
+                    className={svgTaskType === t.id ? 'bg-purple-500' : 'border-white/20 text-white'}
+                  >
+                    {t.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Style Selection */}
+            <div>
+              <label className="text-white/80 text-sm mb-2 block">Визуальный стиль</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {[
+                  { id: 'ghibli', label: 'Ghibli', icon: '🌸', desc: 'Акварель' },
+                  { id: 'disney', label: 'Disney', icon: '🏰', desc: 'Яркий' },
+                  { id: 'anime', label: 'Anime', icon: '⚡', desc: 'Динамичный' },
+                  { id: 'pixar', label: 'Pixar', icon: '🧸', desc: '3D стиль' },
+                ].map((s) => (
+                  <Button
+                    key={s.id}
+                    size="sm"
+                    variant={svgStyle === s.id ? 'default' : 'outline'}
+                    onClick={() => setSvgStyle(s.id as any)}
+                    className={svgStyle === s.id ? 'bg-purple-500' : 'border-white/20 text-white'}
+                  >
+                    {s.icon} {s.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Time of Day */}
+            <div>
+              <label className="text-white/80 text-sm mb-2 block">Время суток</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: 'день', label: '☀️ День' },
+                  { id: 'вечер', label: '🌅 Вечер' },
+                  { id: 'ночь', label: '🌙 Ночь' },
+                  { id: 'рассвет', label: '🌄 Рассвет' },
+                ].map((t) => (
+                  <Button
+                    key={t.id}
+                    size="sm"
+                    variant={svgTimeOfDay === t.id ? 'default' : 'outline'}
+                    onClick={() => setSvgTimeOfDay(t.id as any)}
+                    className={svgTimeOfDay === t.id ? 'bg-purple-500' : 'border-white/20 text-white'}
+                  >
+                    {t.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Dimensions */}
+            <div>
+              <label className="text-white/80 text-sm mb-2 block">Размер изображения</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { w: 1024, h: 576, label: '16:9 Широкий' },
+                  { w: 800, h: 600, label: '4:3 Стандарт' },
+                  { w: 600, h: 600, label: '1:1 Квадрат' },
+                  { w: 576, h: 1024, label: '9:16 Истории' },
+                ].map((d) => (
+                  <Button
+                    key={`${d.w}x${d.h}`}
+                    size="sm"
+                    variant={svgDimensions.width === d.w ? 'default' : 'outline'}
+                    onClick={() => setSvgDimensions({ width: d.w, height: d.h })}
+                    className={svgDimensions.width === d.w ? 'bg-purple-500' : 'border-white/20 text-white'}
+                  >
+                    {d.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Technical Specification */}
+            <div>
+              <label className="text-white/80 text-sm mb-2 block">
+                Техническое задание (ТЗ)
+              </label>
+              <Textarea
+                value={svgTaskDescription}
+                onChange={(e) => setSvgTaskDescription(e.target.value)}
+                placeholder="Опишите требования к изображению: стиль, цвета, настроение, ключевые элементы..."
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/40 min-h-[80px]"
+              />
+            </div>
+
+            {/* Custom Text Fields for Ads/Banners */}
+            {(svgTaskType === 'banner' || svgTaskType === 'ad' || svgTaskType === 'social' || svgTaskType === 'poster') && (
+              <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 p-4 rounded-lg border border-white/10 space-y-3">
+                <div className="text-white/60 text-sm mb-2">📝 Текст для контента</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-white/60 text-xs mb-1 block">Заголовок</label>
+                    <Input
+                      value={svgCustomText.title}
+                      onChange={(e) => setSvgCustomText(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Название бренда"
+                      className="bg-white/5 border-white/10 text-white text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-white/60 text-xs mb-1 block">Подзаголовок</label>
+                    <Input
+                      value={svgCustomText.subtitle}
+                      onChange={(e) => setSvgCustomText(prev => ({ ...prev, subtitle: e.target.value }))}
+                      placeholder="Краткое описание"
+                      className="bg-white/5 border-white/10 text-white text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-white/60 text-xs mb-1 block">CTA кнопка</label>
+                    <Input
+                      value={svgCustomText.cta}
+                      onChange={(e) => setSvgCustomText(prev => ({ ...prev, cta: e.target.value }))}
+                      placeholder="Подробнее"
+                      className="bg-white/5 border-white/10 text-white text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-white/60 text-xs mb-1 block">Цена</label>
+                    <Input
+                      value={svgCustomText.price}
+                      onChange={(e) => setSvgCustomText(prev => ({ ...prev, price: e.target.value }))}
+                      placeholder="990₽"
+                      className="bg-white/5 border-white/10 text-white text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={generateSVG}
+              disabled={svgLoading}
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-12"
+            >
+              {svgLoading ? (
+                <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Генерация SVG...</>
+              ) : (
+                <><Sparkles className="w-5 h-5 mr-2" /> Сгенерировать SVG</>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* SVG Agents Status */}
+        {svgAgents.length > 0 && (
+          <Card className="bg-white/5 border-white/10 mb-8">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-white text-sm flex items-center gap-2">
+                <Bot className="w-4 h-4" /> SVG Агенты ({svgAgents.filter(a => a.status === 'done').length}/{svgAgents.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-11 gap-2">
+                {svgAgents.map((agent) => (
+                  <div key={agent.id} className={`p-2 rounded-lg border text-center transition-all ${
+                    agent.status === 'done' ? 'bg-green-500/10 border-green-500/30' :
+                    agent.status === 'working' ? 'bg-purple-500/10 border-purple-500/30' :
+                    'bg-white/5 border-white/10'
+                  }`}>
+                    <span className="text-lg">{agent.icon}</span>
+                    <div className="text-white text-xs mt-1 truncate">{agent.name}</div>
+                    {agent.status === 'done' && <CheckCircle className="w-3 h-3 text-green-400 mx-auto mt-1" />}
+                    {agent.status === 'working' && <Loader2 className="w-3 h-3 text-purple-400 animate-spin mx-auto mt-1" />}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* SVG Logs */}
+        {svgLogs.length > 0 && (
+          <Card className="bg-white/5 border-white/10 mb-8">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-white text-sm">📋 Логи генерации</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-black/30 p-3 rounded-lg font-mono text-xs text-green-400 max-h-32 overflow-y-auto">
+                {svgLogs.map((log, i) => <div key={i}>{log}</div>)}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* SVG Result */}
+        {svgResult && (
+          <Card className="bg-white/5 border-white/10 mb-8">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-white text-sm">✨ Результат</CardTitle>
+                <div className="flex gap-2">
+                  <Badge variant="outline" className="border-green-500/30 text-green-400">
+                    {svgResult.totalTime}мс
+                  </Badge>
+                  <Badge variant="outline" className="border-purple-500/30 text-purple-300">
+                    v{svgResult.version}
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Zoom Controls */}
+              <div className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setSvgZoom(Math.max(25, svgZoom - 25))} className="text-white/60 h-8 w-8 p-0">
+                    <ZoomOut className="w-4 h-4" />
+                  </Button>
+                  <span className="text-white/60 text-xs w-12 text-center">{svgZoom}%</span>
+                  <Button size="sm" variant="ghost" onClick={() => setSvgZoom(Math.min(200, svgZoom + 25))} className="text-white/60 h-8 w-8 p-0">
+                    <ZoomIn className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => copySVG(svgResult.finalScene?.svg || '')} className="text-white/60 h-8 px-2">
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => downloadSVG(svgResult.finalScene?.svg || '', `fortorium-${svgTaskType}`)} className="text-white/60 h-8 px-2">
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              {/* SVG Preview */}
+              <div className="bg-black/30 rounded-lg overflow-auto flex items-center justify-center p-4" style={{ minHeight: '350px' }}>
+                {svgResult?.finalScene?.svg ? (
+                  <div 
+                    className="w-full"
+                    style={{ transform: `scale(${svgZoom / 100})`, transformOrigin: 'center center' }} 
+                    dangerouslySetInnerHTML={{ __html: svgResult.finalScene.svg }} 
+                  />
+                ) : (
+                  <div className="text-white/40 text-center py-8">
+                    <Wand2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Нажмите "Сгенерировать SVG"</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* SVG Layers Preview */}
+        {svgResult?.storyboard?.frames && (
+          <Card className="bg-white/5 border-white/10 mb-8">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-white text-sm">🎬 Слои ({svgResult.storyboard.frames.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {svgResult.storyboard.frames.map((frame, i) => (
+                  <div key={i} className="bg-black/30 rounded-lg overflow-hidden border border-white/10">
+                    <div 
+                      className="aspect-video"
+                      dangerouslySetInnerHTML={{ __html: frame.svg }}
+                    />
+                    <div className="p-1 text-center">
+                      <span className="text-xs text-white/50">{frame.agentIcon} {frame.agentName}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        </>
+        )}
+
+        {/* Results - Script Results (inside script tab) */}
+        {mainTab === 'script' && script && (
           <div className="space-y-6">
             {/* Tab Navigation */}
             <div className="flex gap-2 border-b border-white/10 pb-2">
@@ -781,7 +1113,6 @@ export default function AnimationStudio() {
                 { id: 'overview', label: 'Обзор', icon: Film },
                 { id: 'scenes', label: 'Сцены', icon: Image },
                 { id: 'characters', label: 'Персонажи', icon: Users },
-                { id: 'svg', label: 'SVG', icon: Wand2 },
               ].map((tab) => (
                 <Button
                   key={tab.id}
@@ -1131,468 +1462,6 @@ export default function AnimationStudio() {
               </div>
             )}
 
-            {/* SVG Tab */}
-            {activeTab === 'svg' && (
-              <div className="space-y-6">
-                <Card className="bg-white/5 border-white/10">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
-                      <Wand2 className="w-5 h-5" /> SVG Генератор
-                    </CardTitle>
-                    <CardDescription className="text-white/60">
-                      Создание SVG-раскадровки с помощью 11 специализированных агентов
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Task Type Selection */}
-                    <div>
-                      <label className="text-white/80 text-sm mb-2 block">Тип задачи</label>
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { id: 'scene', label: '🎬 Сцена', desc: 'Кинематографическая сцена' },
-                          { id: 'banner', label: '📐 Баннер', desc: 'Рекламный баннер' },
-                          { id: 'ad', label: '📢 Реклама', desc: 'Рекламный креатив' },
-                          { id: 'social', label: '📱 Соцсети', desc: 'Пост для соцсетей' },
-                          { id: 'poster', label: '🖼️ Постер', desc: 'Афиша или плакат' },
-                        ].map((t) => (
-                          <Button
-                            key={t.id}
-                            size="sm"
-                            variant={svgTaskType === t.id ? 'default' : 'outline'}
-                            onClick={() => setSvgTaskType(t.id as any)}
-                            className={svgTaskType === t.id ? 'bg-purple-500' : 'border-white/20 text-white'}
-                          >
-                            {t.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Style Selection */}
-                    <div>
-                      <label className="text-white/80 text-sm mb-2 block">Визуальный стиль</label>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {[
-                          { id: 'ghibli', label: 'Ghibli', icon: '🌸', desc: 'Акварель' },
-                          { id: 'disney', label: 'Disney', icon: '🏰', desc: 'Яркий' },
-                          { id: 'anime', label: 'Anime', icon: '⚡', desc: 'Динамичный' },
-                          { id: 'pixar', label: 'Pixar', icon: '🧸', desc: '3D стиль' },
-                        ].map((s) => (
-                          <Button
-                            key={s.id}
-                            size="sm"
-                            variant={svgStyle === s.id ? 'default' : 'outline'}
-                            onClick={() => setSvgStyle(s.id as any)}
-                            className={svgStyle === s.id ? 'bg-purple-500' : 'border-white/20 text-white'}
-                          >
-                            {s.icon} {s.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Time of Day */}
-                    <div>
-                      <label className="text-white/80 text-sm mb-2 block">Время суток</label>
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { id: 'день', label: '☀️ День' },
-                          { id: 'вечер', label: '🌅 Вечер' },
-                          { id: 'ночь', label: '🌙 Ночь' },
-                          { id: 'рассвет', label: '🌄 Рассвет' },
-                        ].map((t) => (
-                          <Button
-                            key={t.id}
-                            size="sm"
-                            variant={svgTimeOfDay === t.id ? 'default' : 'outline'}
-                            onClick={() => setSvgTimeOfDay(t.id as any)}
-                            className={svgTimeOfDay === t.id ? 'bg-purple-500' : 'border-white/20 text-white'}
-                          >
-                            {t.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Dimensions */}
-                    <div>
-                      <label className="text-white/80 text-sm mb-2 block">Размер изображения</label>
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { w: 1024, h: 576, label: '16:9 Широкий' },
-                          { w: 800, h: 600, label: '4:3 Стандарт' },
-                          { w: 600, h: 600, label: '1:1 Квадрат' },
-                          { w: 576, h: 1024, label: '9:16 Истории' },
-                        ].map((d) => (
-                          <Button
-                            key={`${d.w}x${d.h}`}
-                            size="sm"
-                            variant={svgDimensions.width === d.w ? 'default' : 'outline'}
-                            onClick={() => setSvgDimensions({ width: d.w, height: d.h })}
-                            className={svgDimensions.width === d.w ? 'bg-purple-500' : 'border-white/20 text-white'}
-                          >
-                            {d.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Technical Specification */}
-                    <div>
-                      <label className="text-white/80 text-sm mb-2 block">
-                        Техническое задание (ТЗ)
-                      </label>
-                      <Textarea
-                        value={svgTaskDescription}
-                        onChange={(e) => setSvgTaskDescription(e.target.value)}
-                        placeholder="Опишите требования к изображению: стиль, цвета, настроение, ключевые элементы, целевая аудитория, бренд-требования..."
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40 min-h-[100px]"
-                      />
-                    </div>
-
-                    {/* Custom Text Fields for Ads/Banners */}
-                    {(svgTaskType === 'banner' || svgTaskType === 'ad' || svgTaskType === 'social' || svgTaskType === 'poster') && (
-                      <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 p-4 rounded-lg border border-white/10 space-y-3">
-                        <div className="text-white/60 text-sm mb-2">📝 Текст для контента</div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-white/60 text-xs mb-1 block">Заголовок</label>
-                            <Input
-                              value={svgCustomText.title}
-                              onChange={(e) => setSvgCustomText(prev => ({ ...prev, title: e.target.value }))}
-                              placeholder="Название бренда или продукта"
-                              className="bg-white/5 border-white/10 text-white text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-white/60 text-xs mb-1 block">Подзаголовок</label>
-                            <Input
-                              value={svgCustomText.subtitle}
-                              onChange={(e) => setSvgCustomText(prev => ({ ...prev, subtitle: e.target.value }))}
-                              placeholder="Краткое описание"
-                              className="bg-white/5 border-white/10 text-white text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-white/60 text-xs mb-1 block">CTA кнопка</label>
-                            <Input
-                              value={svgCustomText.cta}
-                              onChange={(e) => setSvgCustomText(prev => ({ ...prev, cta: e.target.value }))}
-                              placeholder="Подробнее"
-                              className="bg-white/5 border-white/10 text-white text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-white/60 text-xs mb-1 block">Цена (опционально)</label>
-                            <Input
-                              value={svgCustomText.price}
-                              onChange={(e) => setSvgCustomText(prev => ({ ...prev, price: e.target.value }))}
-                              placeholder="990₽"
-                              className="bg-white/5 border-white/10 text-white text-sm"
-                            />
-                          </div>
-                        </div>
-                        {svgTaskType === 'social' && (
-                          <div>
-                            <label className="text-white/60 text-xs mb-1 block">Хэштег</label>
-                            <Input
-                              value={svgCustomText.hashtag}
-                              onChange={(e) => setSvgCustomText(prev => ({ ...prev, hashtag: e.target.value }))}
-                              placeholder="#форториум #анимация"
-                              className="bg-white/5 border-white/10 text-white text-sm"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <Button
-                      onClick={generateSVG}
-                      disabled={svgLoading}
-                      className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-12"
-                    >
-                      {svgLoading ? (
-                        <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Генерация SVG...</>
-                      ) : (
-                        <><Sparkles className="w-5 h-5 mr-2" /> Сгенерировать SVG</>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {/* SVG Agents Status */}
-                {svgAgents.length > 0 && (
-                  <Card className="bg-white/5 border-white/10">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-white text-sm flex items-center gap-2">
-                        <Bot className="w-4 h-4" /> SVG Агенты
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                        {svgAgents.map((agent) => (
-                          <div key={agent.id} className={`p-2 rounded-lg border text-center transition-all ${
-                            agent.status === 'done' ? 'bg-green-500/10 border-green-500/30' :
-                            agent.status === 'working' ? 'bg-purple-500/10 border-purple-500/30' :
-                            'bg-white/5 border-white/10'
-                          }`}>
-                            <span className="text-xl">{agent.icon}</span>
-                            <div className="text-white text-xs mt-1 truncate">{agent.name}</div>
-                            {agent.status === 'done' && <CheckCircle className="w-3 h-3 text-green-400 mx-auto mt-1" />}
-                            {agent.status === 'working' && <Loader2 className="w-3 h-3 text-purple-400 animate-spin mx-auto mt-1" />}
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* SVG Logs */}
-                {svgLogs.length > 0 && (
-                  <Card className="bg-white/5 border-white/10">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-white text-sm">Логи SVG генерации</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="bg-black/30 p-3 rounded-lg font-mono text-xs text-green-400 max-h-32 overflow-y-auto">
-                        {svgLogs.map((log, i) => <div key={i}>{log}</div>)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* SVG Results */}
-                {svgResult && (
-                  <>
-                    {/* Final Scene */}
-                    <Card className="bg-white/5 border-white/10">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-white text-sm">✨ Финальная сцена</CardTitle>
-                          <div className="flex gap-2 flex-wrap">
-                            <Badge variant="outline" className="border-green-500/30 text-green-400 text-xs">
-                              {svgResult.totalTime}мс
-                            </Badge>
-                            <Badge variant="outline" className="border-purple-500/30 text-purple-300 text-xs">
-                              {svgDimensions.width}×{svgDimensions.height}
-                            </Badge>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {/* Zoom Controls */}
-                        <div className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setSvgZoom(Math.max(25, svgZoom - 25))}
-                              className="text-white/60 hover:text-white h-8 w-8 p-0"
-                            >
-                              <ZoomOut className="w-4 h-4" />
-                            </Button>
-                            <span className="text-white/60 text-xs w-12 text-center">{svgZoom}%</span>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setSvgZoom(Math.min(200, svgZoom + 25))}
-                              className="text-white/60 hover:text-white h-8 w-8 p-0"
-                            >
-                              <ZoomIn className="w-4 h-4" />
-                            </Button>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setFullscreenSvg(svgResult.finalScene.svg)}
-                              className="text-white/60 hover:text-white h-8 px-2"
-                            >
-                              <Maximize2 className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => copySVG(svgResult.finalScene.svg)}
-                              className="text-white/60 hover:text-white h-8 px-2"
-                            >
-                              <Copy className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => downloadSVG(svgResult.finalScene.svg, `fortorium-${svgTaskType}-final`)}
-                              className="text-white/60 hover:text-white h-8 px-2"
-                            >
-                              <Download className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => downloadPNG(svgResult.finalScene.svg, `fortorium-${svgTaskType}-final`)}
-                              className="text-white/60 hover:text-white h-8 px-2"
-                            >
-                              <FileImage className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        {/* SVG Preview */}
-                        <div 
-                          className="bg-black/30 rounded-lg overflow-auto flex items-center justify-center p-4"
-                          style={{ minHeight: '300px' }}
-                        >
-                          <div 
-                            style={{ transform: `scale(${svgZoom / 100})`, transformOrigin: 'center' }}
-                            dangerouslySetInnerHTML={{ __html: svgResult.finalScene.svg }}
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Export Actions */}
-                    <Card className="bg-white/5 border-white/10">
-                      <CardContent className="py-4">
-                        <div className="flex flex-wrap gap-2 justify-center">
-                          <Button
-                            onClick={() => downloadSVG(svgResult.finalScene.svg, `fortorium-${svgTaskType}`)}
-                            className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
-                          >
-                            <Download className="w-4 h-4 mr-2" /> Скачать SVG
-                          </Button>
-                          <Button
-                            onClick={() => downloadPNG(svgResult.finalScene.svg, `fortorium-${svgTaskType}`)}
-                            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                          >
-                            <FileImage className="w-4 h-4 mr-2" /> Скачать PNG
-                          </Button>
-                          <Button
-                            onClick={() => copySVG(svgResult.finalScene.svg)}
-                            variant="outline"
-                            className="border-white/20 text-white"
-                          >
-                            <Copy className="w-4 h-4 mr-2" /> Копировать SVG
-                          </Button>
-                          <Button
-                            onClick={downloadAllLayers}
-                            variant="outline"
-                            className="border-white/20 text-white"
-                          >
-                            <Download className="w-4 h-4 mr-2" /> Все слои (11 SVG)
-                          </Button>
-                          <Button
-                            onClick={regenerateSVG}
-                            variant="outline"
-                            className="border-purple-500/30 text-purple-300"
-                          >
-                            <RefreshCw className="w-4 h-4 mr-2" /> Пересоздать
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Storyboard Grid */}
-                    <Card className="bg-white/5 border-white/10">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-white text-sm">
-                            🎬 Раскадровка ({svgResult.storyboard.frames.length} слоёв)
-                          </CardTitle>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setSelectedLayer(null)}
-                            className="text-white/60"
-                          >
-                            Показать все
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                          {svgResult.storyboard.frames.map((frame) => (
-                            <div 
-                              key={frame.id} 
-                              className={`bg-black/30 rounded-lg overflow-hidden border cursor-pointer transition-all hover:border-purple-500/50 ${
-                                selectedLayer === frame.id ? 'border-purple-500 ring-2 ring-purple-500/30' : 'border-white/10'
-                              }`}
-                              onClick={() => setSelectedLayer(selectedLayer === frame.id ? null : frame.id)}
-                            >
-                              <div 
-                                className="aspect-video"
-                                dangerouslySetInnerHTML={{ __html: frame.svg }}
-                              />
-                              <div className="p-2 flex items-center gap-2">
-                                <span>{frame.agentIcon}</span>
-                                <span className="text-white/60 text-xs truncate flex-1">{frame.agentName}</span>
-                                {frame.success && <CheckCircle className="w-3 h-3 text-green-400 flex-shrink-0" />}
-                              </div>
-                              {selectedLayer === frame.id && (
-                                <div className="p-2 border-t border-white/10 flex gap-1">
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={(e) => { e.stopPropagation(); downloadSVG(frame.svg, `layer-${frame.agentId}`); }}
-                                    className="text-white/60 hover:text-white h-7 px-2 text-xs"
-                                  >
-                                    <Download className="w-3 h-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={(e) => { e.stopPropagation(); setFullscreenSvg(frame.svg); }}
-                                    className="text-white/60 hover:text-white h-7 px-2 text-xs"
-                                  >
-                                    <Maximize2 className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
-
-                {/* Fullscreen Modal */}
-                {fullscreenSvg && (
-                  <div 
-                    className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
-                    onClick={() => setFullscreenSvg(null)}
-                  >
-                    <button
-                      onClick={() => setFullscreenSvg(null)}
-                      className="absolute top-4 right-4 text-white/60 hover:text-white bg-white/10 rounded-full p-2"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                    <div 
-                      className="max-w-full max-h-full overflow-auto"
-                      onClick={(e) => e.stopPropagation()}
-                      dangerouslySetInnerHTML={{ __html: fullscreenSvg }}
-                    />
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                      <Button
-                        onClick={() => downloadSVG(fullscreenSvg, 'fortorium-fullscreen')}
-                        className="bg-white/20 backdrop-blur"
-                      >
-                        <Download className="w-4 h-4 mr-2" /> Скачать SVG
-                      </Button>
-                      <Button
-                        onClick={() => downloadPNG(fullscreenSvg, 'fortorium-fullscreen')}
-                        className="bg-white/20 backdrop-blur"
-                      >
-                        <FileImage className="w-4 h-4 mr-2" /> Скачать PNG
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Export Button */}
             <div className="flex justify-center pt-4">
               <Button
@@ -1605,8 +1474,8 @@ export default function AnimationStudio() {
           </div>
         )}
 
-        {/* Empty State */}
-        {!script && !isLoading && (
+        {/* Empty State - only for script tab */}
+        {mainTab === 'script' && !script && !isLoading && (
           <Card className="bg-white/5 border-white/10">
             <CardContent className="py-16">
               <div className="text-center text-white/40">
