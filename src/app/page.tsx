@@ -125,7 +125,7 @@ export default function AnimationStudio() {
   const [script, setScript] = useState<Script | null>(null);
   const [currentPhase, setCurrentPhase] = useState<string>('');
   const [logs, setLogs] = useState<string[]>([]);
-  const [activeMainTab, setActiveMainTab] = useState<'demo' | 'agents' | 'pipeline'>('demo');
+  const [activeMainTab, setActiveMainTab] = useState<'demo' | 'agents' | 'svg' | 'pipeline'>('demo');
   const [activeResultTab, setActiveResultTab] = useState<'overview' | 'scenes' | 'characters'>('overview');
   
   const [agents, setAgents] = useState<AgentStatus[]>([
@@ -137,6 +137,43 @@ export default function AnimationStudio() {
     { id: 'editor', name: 'Монтажёр', icon: '✂️', color: 'bg-red-500', status: 'waiting', progress: 0, message: 'Ожидает материалы' },
   ]);
   const [productionPlan, setProductionPlan] = useState<any>(null);
+  
+  // SVG Team State
+  const [svgAgents, setSvgAgents] = useState<AgentStatus[]>([
+    { id: 'palette', name: 'Цветовая палитра', icon: '🎨', color: 'bg-pink-500', status: 'waiting', progress: 0, message: 'Готов' },
+    { id: 'background', name: 'Фон', icon: '🌄', color: 'bg-blue-500', status: 'waiting', progress: 0, message: 'Ожидает' },
+    { id: 'perspective', name: 'Перспектива', icon: '📐', color: 'bg-indigo-500', status: 'waiting', progress: 0, message: 'Ожидает' },
+    { id: 'composition', name: 'Композиция', icon: '📊', color: 'bg-purple-500', status: 'waiting', progress: 0, message: 'Ожидает' },
+    { id: 'lighting', name: 'Освещение', icon: '💡', color: 'bg-yellow-500', status: 'waiting', progress: 0, message: 'Ожидает' },
+    { id: 'details', name: 'Детали', icon: '✨', color: 'bg-cyan-500', status: 'waiting', progress: 0, message: 'Ожидает' },
+    { id: 'objects', name: 'Предметы', icon: '🪑', color: 'bg-orange-500', status: 'waiting', progress: 0, message: 'Ожидает' },
+    { id: 'characters', name: 'Персонажи', icon: '👤', color: 'bg-red-500', status: 'waiting', progress: 0, message: 'Ожидает' },
+    { id: 'layout', name: 'Расстановка', icon: '📍', color: 'bg-emerald-500', status: 'waiting', progress: 0, message: 'Ожидает' },
+    { id: 'animation', name: 'Анимация', icon: '🎬', color: 'bg-violet-500', status: 'waiting', progress: 0, message: 'Ожидает' },
+  ]);
+  const [svgScene, setSvgScene] = useState<any>(null);
+  const [svgResult, setSvgResult] = useState<any>(null);
+  const [svgLoading, setSvgLoading] = useState(false);
+  const [svgSceneSettings, setSvgSceneSettings] = useState({
+    location: 'лес',
+    timeOfDay: 'день',
+    mood: 'спокойный',
+    style: 'ghibli'
+  });
+
+  // SVG Team Definition
+  const SVG_AGENTS = [
+    { id: 'palette', name: 'Цветовая палитра', icon: '🎨', color: 'bg-pink-500', desc: 'Цветовая схема и гармония', api: '/api/agents/svg/palette' },
+    { id: 'background', name: 'Фон', icon: '🌄', color: 'bg-blue-500', desc: 'Небо, земля, атмосфера', api: '/api/agents/svg/background' },
+    { id: 'perspective', name: 'Перспектива', icon: '📐', color: 'bg-indigo-500', desc: 'Точки схода, глубина', api: '/api/agents/svg/perspective' },
+    { id: 'composition', name: 'Композиция', icon: '📊', color: 'bg-purple-500', desc: 'Правило третей, ритм', api: '/api/agents/svg/composition' },
+    { id: 'lighting', name: 'Освещение', icon: '💡', color: 'bg-yellow-500', desc: 'Свет и тени', api: '/api/agents/svg/lighting' },
+    { id: 'details', name: 'Детали', icon: '✨', color: 'bg-cyan-500', desc: 'Детали фона', api: '/api/agents/svg/details' },
+    { id: 'objects', name: 'Предметы', icon: '🪑', color: 'bg-orange-500', desc: 'Реквизит и предметы', api: '/api/agents/svg/objects' },
+    { id: 'characters', name: 'Персонажи', icon: '👤', color: 'bg-red-500', desc: 'Персонажи в сцене', api: '/api/agents/svg/characters' },
+    { id: 'layout', name: 'Расстановка', icon: '📍', color: 'bg-emerald-500', desc: 'Логичное размещение', api: '/api/agents/svg/layout' },
+    { id: 'animation', name: 'Анимация', icon: '🎬', color: 'bg-violet-500', desc: 'Движение и динамика', api: '/api/agents/svg/animation' },
+  ];
 
   useEffect(() => {
     const { needsReload, version } = initVersionSystem();
@@ -161,6 +198,53 @@ export default function AnimationStudio() {
 
   const updateAgent = (id: string, updates: Partial<AgentStatus>) => {
     setAgents(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+  };
+
+  const updateSvgAgent = (id: string, updates: Partial<AgentStatus>) => {
+    setSvgAgents(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+  };
+
+  // Generate SVG Scene with all 10 agents
+  const generateSvgScene = async () => {
+    setSvgLoading(true);
+    setSvgResult(null);
+    setSvgAgents(prev => prev.map(a => ({ ...a, status: 'waiting', progress: 0, message: 'Ожидает' })));
+    
+    try {
+      // Call coordinator to run all SVG agents
+      const res = await fetch('/api/agents/svg/coordinator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scene: svgSceneSettings,
+          style: svgSceneSettings.style,
+          dimensions: { width: 1024, height: 576 },
+          includeAnimation: true
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        // Update agent statuses based on results
+        Object.keys(data.agents || {}).forEach((key, i) => {
+          const agentData = data.agents[key];
+          if (agentData?.success) {
+            updateSvgAgent(key, { 
+              status: 'done', 
+              progress: 100, 
+              message: agentData.message || 'Готово' 
+            });
+          }
+        });
+        
+        setSvgResult(data);
+      }
+    } catch (error: any) {
+      console.error('SVG generation error:', error);
+    } finally {
+      setSvgLoading(false);
+    }
   };
 
   const getTimeOfDayIcon = (timeOfDay?: string) => {
@@ -515,6 +599,7 @@ export default function AnimationStudio() {
         <div className="flex gap-1 p-1 bg-white/5 rounded-xl mb-6 overflow-x-auto">
           {[
             { id: 'demo', label: '🎮 Демо' },
+            { id: 'svg', label: '🎨 SVG' },
             { id: 'agents', label: '🤖 Агенты' },
             { id: 'pipeline', label: '🔄 Пайплайн' },
           ].map((tab) => (
@@ -707,6 +792,192 @@ export default function AnimationStudio() {
                 )}
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {/* SVG Tab */}
+        {activeMainTab === 'svg' && (
+          <div>
+            <h3 className="text-xl font-bold text-white mb-1">🎨 SVG-команда: 10 специализированных агентов</h3>
+            <p className="text-white/50 mb-6">Каждый агент отвечает за свою часть создания изображения</p>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Settings Panel */}
+              <Card className="bg-white/5 border-white/10">
+                <CardHeader>
+                  <CardTitle className="text-white text-lg">⚙️ Настройки сцены</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="text-white/80 text-sm mb-1 block">Локация</label>
+                    <select 
+                      value={svgSceneSettings.location}
+                      onChange={(e) => setSvgSceneSettings(prev => ({ ...prev, location: e.target.value }))}
+                      className="w-full bg-white/5 border-white/10 text-white rounded-lg p-2"
+                    >
+                      <option value="лес">🌲 Лес</option>
+                      <option value="море">🌊 Море</option>
+                      <option value="город">🏙️ Город</option>
+                      <option value="космос">🚀 Космос</option>
+                      <option value="замок">🏰 Замок</option>
+                      <option value="горы">⛰️ Горы</option>
+                      <option value="сад">🌸 Сад</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-white/80 text-sm mb-1 block">Время суток</label>
+                    <select 
+                      value={svgSceneSettings.timeOfDay}
+                      onChange={(e) => setSvgSceneSettings(prev => ({ ...prev, timeOfDay: e.target.value }))}
+                      className="w-full bg-white/5 border-white/10 text-white rounded-lg p-2"
+                    >
+                      <option value="утро">🌅 Утро</option>
+                      <option value="день">☀️ День</option>
+                      <option value="вечер">🌇 Вечер</option>
+                      <option value="ночь">🌙 Ночь</option>
+                      <option value="рассвет">🌄 Рассвет</option>
+                      <option value="закат">🌅 Закат</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-white/80 text-sm mb-1 block">Настроение</label>
+                    <select 
+                      value={svgSceneSettings.mood}
+                      onChange={(e) => setSvgSceneSettings(prev => ({ ...prev, mood: e.target.value }))}
+                      className="w-full bg-white/5 border-white/10 text-white rounded-lg p-2"
+                    >
+                      <option value="спокойный">😌 Спокойный</option>
+                      <option value="радостный">😊 Радостный</option>
+                      <option value="таинственный">🔮 Таинственный</option>
+                      <option value="напряжённый">😰 Напряжённый</option>
+                      <option value="волшебный">✨ Волшебный</option>
+                      <option value="грустный">😢 Грустный</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="text-white/80 text-sm mb-1 block">Стиль</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {styles.map((s) => (
+                        <button
+                          key={s.value}
+                          onClick={() => setSvgSceneSettings(prev => ({ ...prev, style: s.value }))}
+                          className={`p-2 rounded-lg text-center transition text-sm ${
+                            svgSceneSettings.style === s.value 
+                              ? 'border-2 border-purple-500 bg-purple-500/20 text-white' 
+                              : 'border border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                          }`}
+                        >
+                          <span className="mr-1">{s.icon}</span>
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <Button
+                    onClick={generateSvgScene}
+                    disabled={svgLoading}
+                    className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
+                  >
+                    {svgLoading ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Создание...</>
+                    ) : (
+                      <><Sparkles className="w-4 h-4 mr-2" /> Создать SVG-сцену</>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+              
+              {/* Agents Grid */}
+              <div className="lg:col-span-2">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {SVG_AGENTS.map((agent) => {
+                    const agentStatus = svgAgents.find(a => a.id === agent.id);
+                    return (
+                      <Card key={agent.id} className={`bg-white/5 border-white/10 transition-colors ${agentStatus?.status === 'done' ? 'border-green-500/30' : ''}`}>
+                        <CardContent className="p-3 text-center">
+                          <div className={`w-10 h-10 rounded-lg ${agent.color} flex items-center justify-center text-xl mx-auto mb-2`}>
+                            {agent.icon}
+                          </div>
+                          <div className="text-xs font-medium text-white mb-1">{agent.name}</div>
+                          <Badge variant="outline" className={`text-[10px] ${
+                            agentStatus?.status === 'done' ? 'border-green-500/30 text-green-400' :
+                            agentStatus?.status === 'working' ? 'border-yellow-500/30 text-yellow-400' :
+                            'border-white/20 text-white/50'
+                          }`}>
+                            {agentStatus?.status === 'done' ? '✓' :
+                             agentStatus?.status === 'working' ? '...' : '○'}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+                
+                {/* SVG Result */}
+                {svgResult && (
+                  <Card className="bg-white/5 border-white/10 mt-4">
+                    <CardHeader>
+                      <CardTitle className="text-white text-lg">🖼️ Результат</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {svgResult.svg ? (
+                        <div className="bg-black/30 rounded-lg p-4 overflow-auto">
+                          <div 
+                            className="prose prose-invert max-w-none"
+                            dangerouslySetInnerHTML={{ __html: svgResult.svg.substring(0, 500) + '...' }}
+                          />
+                          <div className="mt-4 text-xs text-white/50">
+                            SVG код сгенерирован ({svgResult.svg?.length || 0} символов)
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-white/50 text-center py-8">
+                          Нажмите "Создать SVG-сцену" для генерации
+                        </div>
+                      )}
+                      
+                      {/* Palette Info */}
+                      {svgResult.agents?.palette?.palette && (
+                        <div className="mt-4">
+                          <div className="text-xs text-white/50 mb-2">Цветовая палитра:</div>
+                          <div className="flex gap-2">
+                            {svgResult.agents.palette.palette.harmony?.map((color: string, i: number) => (
+                              <div 
+                                key={i}
+                                className="w-8 h-8 rounded-lg border border-white/20"
+                                style={{ backgroundColor: color }}
+                                title={color}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+            
+            {/* Agent Details */}
+            <div className="mt-6">
+              <h4 className="text-lg font-bold text-white mb-4">📋 Детали агентов</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                {SVG_AGENTS.map((agent) => (
+                  <div key={agent.id} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xl">{agent.icon}</span>
+                      <span className="text-sm font-medium text-white">{agent.name}</span>
+                    </div>
+                    <p className="text-xs text-white/50">{agent.desc}</p>
+                    <div className="text-[10px] text-purple-400/70 mt-2 font-mono">{agent.api}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
