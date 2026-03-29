@@ -4,7 +4,7 @@ import ZAI from 'z-ai-web-dev-sdk';
 export const maxDuration = 120;
 
 /**
- * SVG-координатор v7.0.0-AI
+ * SVG-координатор v8.0.0
  * AI-анализ ТЗ для понимания ЛЮБОГО описания персонажа
  */
 
@@ -676,6 +676,255 @@ function generateCharacter(type: string, w: number, h: number, palette: any, ran
       <!-- Уши-динамики -->
       <rect x="-38" y="-60" width="8" height="25" rx="2" fill="#4A4A5A"/>
       <rect x="30" y="-60" width="8" height="25" rx="2" fill="#4A4A5A"/>
+    </g>`,
+
+    // Принцесса
+    princess: () => `
+    <!-- Принцесса -->
+    <g transform="translate(${w*0.45}, ${h*0.52})" filter="url(#fCharShadow)">
+      <ellipse cx="0" cy="95" rx="40" ry="12" fill="rgba(0,0,0,0.2)"/>
+      <!-- Платье -->
+      <path d="M-35 20 Q-45 50 -40 90 Q-20 100 0 105 Q20 100 40 90 Q45 50 35 20 Q20 5 0 10 Q-20 5 -35 20" fill="#FF69B4"/>
+      <path d="M-20 30 Q0 45 20 30" fill="none" stroke="#FF1493" stroke-width="2" opacity="0.5"/>
+      <path d="M-25 50 Q0 65 25 50" fill="none" stroke="#FF1493" stroke-width="2" opacity="0.3"/>
+      <!-- Руки -->
+      <path d="M-32 15 Q-45 20 -42 40" fill="none" stroke="${palette.skin[0]}" stroke-width="8" stroke-linecap="round"/>
+      <path d="M32 15 Q45 20 42 40" fill="none" stroke="${palette.skin[0]}" stroke-width="8" stroke-linecap="round"/>
+      <!-- Голова -->
+      <circle cx="0" cy="-15" r="28" fill="${palette.skin[0]}"/>
+      <!-- Волосы -->
+      <path d="M-25 -20 Q-15 -50 0 -48 Q15 -50 25 -20 Q20 -40 0 -38 Q-20 -40 -25 -20" fill="${palette.hair[2]}"/>
+      <path d="M-28 -10 Q-35 10 -30 35" fill="none" stroke="${palette.hair[2]}" stroke-width="8"/>
+      <path d="M28 -10 Q35 10 30 35" fill="none" stroke="${palette.hair[2]}" stroke-width="8"/>
+      <!-- Глаза -->
+      <ellipse cx="-10" cy="-18" rx="6" ry="8" fill="white"/>
+      <ellipse cx="10" cy="-18" rx="6" ry="8" fill="white"/>
+      <circle cx="-8" cy="-16" r="4" fill="#4169E1"/>
+      <circle cx="12" cy="-16" r="4" fill="#4169E1"/>
+      <circle cx="-6" cy="-19" r="2" fill="white"/>
+      <circle cx="14" cy="-19" r="2" fill="white"/>
+      <!-- Румянец -->
+      <ellipse cx="-15" cy="-5" rx="5" ry="3" fill="#FFB6C1" opacity="0.5"/>
+      <ellipse cx="15" cy="-5" rx="5" ry="3" fill="#FFB6C1" opacity="0.5"/>
+      <!-- Рот -->
+      <path d="M-4 0 Q0 4 4 0" fill="none" stroke="#C08080" stroke-width="2"/>
+      <!-- Корона -->
+      <path d="M-18 -45 L-15 -55 L-8 -48 L0 -60 L8 -48 L15 -55 L18 -45 Z" fill="#FFD700"/>
+      <circle cx="0" cy="-58" r="3" fill="#FF0000"/>
+      <circle cx="-10" cy="-52" r="2" fill="#00CED1"/>
+      <circle cx="10" cy="-52" r="2" fill="#00CED1"/>
+    </g>`,
+
+    // Астронавт
+    astronaut: () => `
+    <!-- Астронавт -->
+    <g transform="translate(${w*0.45}, ${h*0.50})" filter="url(#fCharShadow)">
+      <ellipse cx="0" cy="100" rx="45" ry="15" fill="rgba(0,0,0,0.2)"/>
+      <!-- Ноги -->
+      <rect x="-28" y="55" width="25" height="45" rx="8" fill="#E8E8E8"/>
+      <rect x="3" y="55" width="25" height="45" rx="8" fill="#E8E8E8"/>
+      <rect x="-25" y="90" width="20" height="12" rx="4" fill="#D0D0D0"/>
+      <rect x="5" y="90" width="20" height="12" rx="4" fill="#D0D0D0"/>
+      <!-- Тело (скафандр) -->
+      <rect x="-38" y="-5" width="76" height="65" rx="15" fill="#F0F0F0"/>
+      <rect x="-32" y="0" width="64" height="55" rx="12" fill="#E0E0E0"/>
+      <!-- Рюкзак -->
+      <rect x="30" y="-10" width="20" height="50" rx="5" fill="#D0D0D0"/>
+      <!-- Панели на груди -->
+      <rect x="-20" y="10" width="15" height="20" rx="3" fill="#333"/>
+      <rect x="5" y="10" width="15" height="20" rx="3" fill="#333"/>
+      <circle cx="-12" cy="20" r="4" fill="#00FF00"/>
+      <circle cx="12" cy="20" r="4" fill="#FF0000"/>
+      <!-- Руки -->
+      <rect x="-58" y="-5" width="20" height="50" rx="8" fill="#E8E8E8"/>
+      <rect x="38" y="-5" width="20" height="50" rx="8" fill="#E8E8E8"/>
+      <!-- Перчатки -->
+      <ellipse cx="-48" cy="50" rx="12" ry="10" fill="#D0D0D0"/>
+      <ellipse cx="48" cy="50" rx="12" ry="10" fill="#D0D0D0"/>
+      <!-- Шлем -->
+      <circle cx="0" cy="-40" r="35" fill="#F5F5F5"/>
+      <circle cx="0" cy="-40" r="28" fill="#87CEEB" opacity="0.3"/>
+      <ellipse cx="0" cy="-40" rx="25" ry="25" fill="none" stroke="#FFD700" stroke-width="2"/>
+      <!-- Лицо через визор -->
+      <circle cx="0" cy="-40" r="20" fill="${palette.skin[0]}" opacity="0.7"/>
+      <circle cx="-7" cy="-45" r="3" fill="#333"/>
+      <circle cx="7" cy="-45" r="3" fill="#333"/>
+      <path d="M-5 -35 Q0 -32 5 -35" fill="none" stroke="#333" stroke-width="1.5"/>
+      <!-- Антенна -->
+      <line x1="-15" y1="-70" x2="-20" y2="-85" stroke="#D0D0D0" stroke-width="3"/>
+      <circle cx="-20" cy="-88" r="4" fill="#FF0000"/>
+    </g>`,
+
+    // Пират
+    pirate: () => `
+    <!-- Пират -->
+    <g transform="translate(${w*0.45}, ${h*0.52})" filter="url(#fCharShadow)">
+      <ellipse cx="0" cy="100" rx="45" ry="15" fill="rgba(0,0,0,0.2)"/>
+      <!-- Деревянная нога -->
+      <rect x="-15" y="65" width="12" height="35" fill="#8B4513"/>
+      <ellipse cx="-9" cy="98" rx="8" ry="5" fill="#654321"/>
+      <!-- Нога -->
+      <rect x="5" y="65" width="18" height="35" rx="3" fill="#333"/>
+      <!-- Брюки -->
+      <path d="M-25 50 Q-30 70 -20 100 L20 100 Q30 70 25 50 Q0 55 -25 50" fill="#333"/>
+      <!-- Камзол -->
+      <path d="M-35 10 Q-40 40 -35 60 Q-20 70 0 72 Q20 70 35 60 Q40 40 35 10 Q20 0 0 5 Q-20 0 -35 10" fill="#8B0000"/>
+      <path d="M-30 20 L-25 55" stroke="#FFD700" stroke-width="2"/>
+      <path d="M30 20 L25 55" stroke="#FFD700" stroke-width="2"/>
+      <!-- Пояс -->
+      <rect x="-30" y="50" width="60" height="10" fill="#333"/>
+      <rect x="-5" y="48" width="10" height="14" fill="#FFD700"/>
+      <!-- Руки -->
+      <path d="M-38 15 Q-55 25 -50 50" fill="none" stroke="${palette.skin[0]}" stroke-width="12" stroke-linecap="round"/>
+      <path d="M38 15 Q55 25 50 50" fill="none" stroke="#8B0000" stroke-width="10" stroke-linecap="round"/>
+      <!-- Крюк -->
+      <path d="M50 50 Q60 55 55 70 Q50 75 48 65" fill="none" stroke="#C0C0C0" stroke-width="5"/>
+      <!-- Голова -->
+      <circle cx="0" cy="-15" r="30" fill="${palette.skin[0]}"/>
+      <!-- Борода -->
+      <path d="M-20 5 Q-25 30 -10 40 Q0 45 10 40 Q25 30 20 5" fill="#333"/>
+      <!-- Бандана -->
+      <path d="M-28 -25 Q-20 -50 0 -48 Q20 -50 28 -25 Q20 -30 0 -28 Q-20 -30 -28 -25" fill="#FF0000"/>
+      <circle cx="0" cy="-48" r="5" fill="#FFD700"/>
+      <!-- Глаза -->
+      <ellipse cx="-12" cy="-20" rx="6" ry="7" fill="white"/>
+      <ellipse cx="12" cy="-20" rx="6" ry="7" fill="white"/>
+      <circle cx="-10" cy="-18" r="4" fill="#333"/>
+      <circle cx="10" cy="-18" r="4" fill="#333"/>
+      <!-- Повязка на глаз -->
+      <ellipse cx="12" cy="-20" rx="8" ry="6" fill="#333"/>
+      <line x1="5" y1="-28" x2="20" y2="-12" stroke="#333" stroke-width="2"/>
+      <!-- Шрам -->
+      <path d="M-20 -10 L-15 5" stroke="#8B4513" stroke-width="2"/>
+      <!-- Ухо с серьгой -->
+      <ellipse cx="-28" cy="-10" rx="5" ry="8" fill="${palette.skin[0]}"/>
+      <circle cx="-28" cy="-5" r="3" fill="#FFD700"/>
+    </g>`,
+
+    // Герой/путешественник
+    hero: () => `
+    <!-- Герой-путешественник -->
+    <g transform="translate(${w*0.45}, ${h*0.52})" filter="url(#fCharShadow)">
+      <ellipse cx="0" cy="100" rx="45" ry="15" fill="rgba(0,0,0,0.2)"/>
+      <!-- Ноги -->
+      <rect x="-25" y="60" width="20" height="40" rx="4" fill="#4A4A4A"/>
+      <rect x="5" y="60" width="20" height="40" rx="4" fill="#4A4A4A"/>
+      <!-- Сапоги -->
+      <rect x="-28" y="90" width="25" height="15" rx="4" fill="#3A3A3A"/>
+      <rect x="3" y="90" width="25" height="15" rx="4" fill="#3A3A3A"/>
+      <!-- Плащ -->
+      <path d="M-40 10 Q-50 50 -35 100 L-35 105 Q0 95 35 105 L35 100 Q50 50 40 10 Q20 5 0 8 Q-20 5 -40 10" fill="#2F4F4F"/>
+      <path d="M-35 20 Q-40 60 -30 95" stroke="#3A5F5F" stroke-width="2" fill="none"/>
+      <path d="M35 20 Q40 60 30 95" stroke="#3A5F5F" stroke-width="2" fill="none"/>
+      <!-- Тело -->
+      <path d="M-30 5 Q-35 35 -30 60 Q-15 70 0 72 Q15 70 30 60 Q35 35 30 5 Q15 -5 0 0 Q-15 -5 -30 5" fill="#5D4E37"/>
+      <!-- Ремень -->
+      <rect x="-28" y="50" width="56" height="8" fill="#4A3A2A"/>
+      <rect x="-5" y="48" width="10" height="12" fill="#FFD700"/>
+      <!-- Руки -->
+      <path d="M-32 10 Q-50 20 -48 50" fill="none" stroke="#5D4E37" stroke-width="12" stroke-linecap="round"/>
+      <path d="M32 10 Q50 20 48 50" fill="none" stroke="#5D4E37" stroke-width="12" stroke-linecap="round"/>
+      <!-- Голова -->
+      <circle cx="0" cy="-20" r="28" fill="${palette.skin[0]}"/>
+      <!-- Волосы -->
+      <path d="M-22 -30 Q-15 -55 0 -52 Q15 -55 22 -30 Q15 -45 0 -42 Q-15 -45 -22 -30" fill="#4A3728"/>
+      <!-- Глаза -->
+      <ellipse cx="-10" cy="-25" rx="6" ry="7" fill="white"/>
+      <ellipse cx="10" cy="-25" rx="6" ry="7" fill="white"/>
+      <circle cx="-8" cy="-23" r="4" fill="#4A6B8A"/>
+      <circle cx="12" cy="-23" r="4" fill="#4A6B8A"/>
+      <circle cx="-7" cy="-26" r="2" fill="white"/>
+      <circle cx="13" cy="-26" r="2" fill="white"/>
+      <!-- Нос -->
+      <path d="M0 -15 Q3 -8 0 -5 Q-2 -8 0 -15" fill="${palette.skinShadow[0]}" opacity="0.4"/>
+      <!-- Рот -->
+      <path d="M-6 2 Q0 8 6 2" fill="none" stroke="#8B6060" stroke-width="2"/>
+      <!-- Шляпа -->
+      <ellipse cx="0" cy="-48" rx="35" ry="7" fill="#4A3A2A"/>
+      <path d="M-25 -48 Q-30 -65 -20 -75 Q-5 -85 0 -85 Q5 -85 20 -75 Q30 -65 25 -48" fill="#5D4E37"/>
+      <!-- Рюкзак -->
+      <rect x="25" y="5" width="22" height="40" rx="5" fill="#6B5B4A"/>
+      <rect x="28" y="10" width="16" height="10" rx="2" fill="#5D4E37"/>
+    </g>`,
+
+    // Ребёнок
+    child: () => `
+    <!-- Ребёнок -->
+    <g transform="translate(${w*0.45}, ${h*0.55})" filter="url(#fCharShadow)">
+      <ellipse cx="0" cy="70" rx="30" ry="10" fill="rgba(0,0,0,0.2)"/>
+      <!-- Ноги -->
+      <rect x="-18" y="45" width="14" height="28" rx="5" fill="#4A90A4"/>
+      <rect x="4" y="45" width="14" height="28" rx="5" fill="#4A90A4"/>
+      <!-- Ботинки -->
+      <ellipse cx="-11" cy="72" rx="10" ry="6" fill="#3A3A3A"/>
+      <ellipse cx="11" cy="72" rx="10" ry="6" fill="#3A3A3A"/>
+      <!-- Тело -->
+      <path d="M-22 5 Q-28 25 -25 45 Q-10 55 0 55 Q10 55 25 45 Q28 25 22 5 Q12 -5 0 0 Q-12 -5 -22 5" fill="#FFB347"/>
+      <path d="M-15 15 Q0 25 15 15" fill="none" stroke="#FF9500" stroke-width="2" opacity="0.5"/>
+      <!-- Руки -->
+      <path d="M-24 8 Q-38 15 -35 35" fill="none" stroke="${palette.skin[0]}" stroke-width="8" stroke-linecap="round"/>
+      <path d="M24 8 Q38 15 35 35" fill="none" stroke="${palette.skin[0]}" stroke-width="8" stroke-linecap="round"/>
+      <!-- Голова (больше пропорционально телу) -->
+      <circle cx="0" cy="-20" r="25" fill="${palette.skin[0]}"/>
+      <!-- Волосы -->
+      <path d="M-20 -28 Q-10 -50 0 -48 Q10 -50 20 -28 Q12 -40 0 -38 Q-12 -40 -20 -28" fill="${palette.hair[0]}"/>
+      <!-- Чёлка -->
+      <path d="M-15 -35 Q-5 -45 5 -35" fill="${palette.hair[0]}"/>
+      <!-- Глаза (большие, детские) -->
+      <ellipse cx="-9" cy="-22" rx="7" ry="9" fill="white"/>
+      <ellipse cx="9" cy="-22" rx="7" ry="9" fill="white"/>
+      <circle cx="-7" cy="-20" r="5" fill="#4A8B4A"/>
+      <circle cx="11" cy="-20" r="5" fill="#4A8B4A"/>
+      <circle cx="-5" cy="-24" r="2.5" fill="white"/>
+      <circle cx="13" cy="-24" r="2.5" fill="white"/>
+      <!-- Румянец -->
+      <ellipse cx="-14" cy="-10" rx="5" ry="3" fill="#FFB6C1" opacity="0.6"/>
+      <ellipse cx="14" cy="-10" rx="5" ry="3" fill="#FFB6C1" opacity="0.6"/>
+      <!-- Нос -->
+      <ellipse cx="0" cy="-10" rx="3" ry="2" fill="${palette.skinShadow[0]}" opacity="0.3"/>
+      <!-- Рот (улыбка) -->
+      <path d="M-5 -2 Q0 6 5 -2" fill="none" stroke="#C08080" stroke-width="2"/>
+    </g>`,
+
+    // Животное (лесной житель)
+    animal: () => `
+    <!-- Лесной житель (медвежонок) -->
+    <g transform="translate(${w*0.45}, ${h*0.55})" filter="url(#fCharShadow)">
+      <ellipse cx="0" cy="80" rx="40" ry="12" fill="rgba(0,0,0,0.2)"/>
+      <!-- Задние лапы -->
+      <ellipse cx="-20" cy="75" rx="15" ry="10" fill="#8B6914"/>
+      <ellipse cx="20" cy="75" rx="15" ry="10" fill="#8B6914"/>
+      <!-- Тело -->
+      <ellipse cx="0" cy="40" rx="35" ry="40" fill="#A0782C"/>
+      <!-- Живот -->
+      <ellipse cx="0" cy="45" rx="22" ry="25" fill="#D4A85A"/>
+      <!-- Передние лапы -->
+      <ellipse cx="-32" cy="45" rx="12" ry="18" fill="#8B6914"/>
+      <ellipse cx="32" cy="45" rx="12" ry="18" fill="#8B6914"/>
+      <!-- Голова -->
+      <circle cx="0" cy="-20" r="32" fill="#A0782C"/>
+      <!-- Уши -->
+      <circle cx="-25" cy="-45" r="12" fill="#A0782C"/>
+      <circle cx="-25" cy="-45" r="7" fill="#D4A85A"/>
+      <circle cx="25" cy="-45" r="12" fill="#A0782C"/>
+      <circle cx="25" cy="-45" r="7" fill="#D4A85A"/>
+      <!-- Морда -->
+      <ellipse cx="0" cy="-8" rx="18" ry="14" fill="#D4A85A"/>
+      <!-- Нос -->
+      <ellipse cx="0" cy="-12" rx="8" ry="6" fill="#333"/>
+      <ellipse cx="0" cy="-14" rx="3" ry="2" fill="#555"/>
+      <!-- Глаза -->
+      <ellipse cx="-12" cy="-28" rx="8" ry="10" fill="white"/>
+      <ellipse cx="12" cy="-28" rx="8" ry="10" fill="white"/>
+      <circle cx="-10" cy="-26" r="5" fill="#333"/>
+      <circle cx="14" cy="-26" r="5" fill="#333"/>
+      <circle cx="-8" cy="-29" r="2" fill="white"/>
+      <circle cx="16" cy="-29" r="2" fill="white"/>
+      <!-- Рот -->
+      <path d="M-8 -2 Q0 5 8 -2" fill="none" stroke="#5A4040" stroke-width="2"/>
+      <!-- Щёки -->
+      <ellipse cx="-18" cy="-15" rx="6" ry="4" fill="#FFCCAA" opacity="0.5"/>
+      <ellipse cx="18" cy="-15" rx="6" ry="4" fill="#FFCCAA" opacity="0.5"/>
     </g>`
   };
 
@@ -695,7 +944,7 @@ export async function POST(request: NextRequest) {
       customText = {}
     } = body;
     
-    console.log('[SVG-Coordinator v7.0.0-AI] Task:', taskType, 'Style:', style, 'TZ:', taskDescription?.substring(0, 50));
+    console.log('[SVG-Coordinator v8.0.0] Task:', taskType, 'Style:', style, 'TZ:', taskDescription?.substring(0, 50));
     const startTime = Date.now();
     
     // AI-анализ ТЗ - понимает ЛЮБОЕ описание
@@ -754,7 +1003,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      version: '7.0.0-AI',
+      version: '8.0.0',
       taskType,
       taskDescription: taskDescription || null,
       tzAnalysis: {
@@ -1442,6 +1691,6 @@ function composeFinalScene(config: any): string {
     ${subtitle ? `<text x="${w/2}" y="${h*0.16}" text-anchor="middle" font-size="16" fill="rgba(255,255,255,0.8)">${subtitle}</text>` : ''}
     ${taskType !== 'scene' ? `<rect x="${w/2-80}" y="${h*0.88}" width="160" height="40" rx="20" fill="${palette.accent[0]}"/><text x="${w/2}" y="${h*0.88+26}" text-anchor="middle" font-size="15" font-weight="bold" fill="white">${cta}</text>` : ''}
     
-    <text x="${w-12}" y="${h-8}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.15)">ФОРТОРИУМ v7.0.0-AI</text>
+    <text x="${w-12}" y="${h-8}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.15)">ФОРТОРИУМ v8.0.0</text>
   </svg>`;
 }
