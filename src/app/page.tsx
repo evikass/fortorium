@@ -98,6 +98,30 @@ interface AgentStatus {
   message: string;
 }
 
+// SVG Agents Types
+interface SVGLayer {
+  id: number;
+  agentId: string;
+  agentName: string;
+  agentIcon: string;
+  svg: string;
+  success: boolean;
+  executionTime: number;
+}
+
+interface SVGResult {
+  success: boolean;
+  version: string;
+  taskType: string;
+  taskDescription: string | null;
+  executionTime: number;
+  composerTime: number;
+  totalTime: number;
+  storyboard: { frames: SVGLayer[] };
+  finalScene: { svg: string; success: boolean };
+  message: string;
+}
+
 export default function AnimationStudio() {
   const [projectName, setProjectName] = useState('');
   const [projectIdea, setProjectIdea] = useState('');
@@ -109,13 +133,28 @@ export default function AnimationStudio() {
   const [script, setScript] = useState<Script | null>(null);
   const [currentPhase, setCurrentPhase] = useState<string>('');
   const [logs, setLogs] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'scenes' | 'characters'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'scenes' | 'characters' | 'svg'>('overview');
   const [agents, setAgents] = useState<AgentStatus[]>([
     { id: 'writer', name: 'Сценарист', icon: '📝', status: 'waiting', progress: 0, message: 'Ожидает задачу' },
     { id: 'artist', name: 'Художник', icon: '🎨', status: 'waiting', progress: 0, message: 'Ожидает сценарий' },
     { id: 'animator', name: 'Аниматор', icon: '🎬', status: 'waiting', progress: 0, message: 'Ожидает раскадровку' },
     { id: 'composer', name: 'Композитор', icon: '🎵', status: 'waiting', progress: 0, message: 'Ожидает анимацию' },
   ]);
+
+  // SVG Agents State
+  const [svgTaskType, setSvgTaskType] = useState<'scene' | 'banner' | 'ad' | 'social' | 'poster'>('scene');
+  const [svgTaskDescription, setSvgTaskDescription] = useState('');
+  const [svgCustomText, setSvgCustomText] = useState({
+    title: '',
+    subtitle: '',
+    cta: 'Подробнее',
+    price: '',
+    hashtag: ''
+  });
+  const [svgLoading, setSvgLoading] = useState(false);
+  const [svgResult, setSvgResult] = useState<SVGResult | null>(null);
+  const [svgAgents, setSvgAgents] = useState<AgentStatus[]>([]);
+  const [svgLogs, setSvgLogs] = useState<string[]>([]);
 
   useEffect(() => {
     const { needsReload, version } = initVersionSystem();
@@ -346,6 +385,77 @@ export default function AnimationStudio() {
     updateAgent('composer', { status: 'done', progress: 100, message: 'Готово!' });
     setCurrentPhase('Проект готов!');
     addLog('🎉 Генерация завершена!');
+  };
+
+  // SVG Generation
+  const generateSVG = async () => {
+    setSvgLoading(true);
+    setSvgResult(null);
+    setSvgLogs([]);
+    
+    const time = new Date().toLocaleTimeString();
+    setSvgLogs([`[${time}] 🎨 Начинаю генерацию SVG...`]);
+    setSvgLogs(prev => [...prev, `Тип задачи: ${svgTaskType}`]);
+    if (svgTaskDescription) {
+      setSvgLogs(prev => [...prev, `ТЗ: ${svgTaskDescription.substring(0, 100)}...`]);
+    }
+    
+    // Initialize SVG agents
+    const svgAgentList = [
+      { id: 'palette', name: 'Палитра', icon: '🎨' },
+      { id: 'background', name: 'Фон', icon: '🌄' },
+      { id: 'perspective', name: 'Перспектива', icon: '📐' },
+      { id: 'composition', name: 'Композиция', icon: '📊' },
+      { id: 'lighting', name: 'Освещение', icon: '💡' },
+      { id: 'details', name: 'Детали', icon: '✨' },
+      { id: 'objects', name: 'Предметы', icon: '🪑' },
+      { id: 'characters', name: 'Персонажи', icon: '👤' },
+      { id: 'layout', name: 'Расстановка', icon: '📍' },
+      { id: 'animation', name: 'Анимация', icon: '🎬' },
+      { id: 'typography', name: 'Типографика', icon: '🔤' }
+    ];
+    
+    setSvgAgents(svgAgentList.map(a => ({ ...a, status: 'working' as const, progress: 50, message: 'Генерация...' })));
+    
+    try {
+      const res = await fetch('/api/agents/svg/coordinator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskType: svgTaskType,
+          taskDescription: svgTaskDescription,
+          style: style,
+          dimensions: { width: 1024, height: 576 },
+          customText: svgCustomText,
+          scene: {
+            location: svgTaskType === 'scene' ? 'волшебный лес' : 'studio',
+            timeOfDay: 'день',
+            mood: 'сказочный'
+          }
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setSvgResult(data);
+        setSvgAgents(prev => prev.map(a => ({ ...a, status: 'done' as const, progress: 100, message: 'Готово!' })));
+        setSvgLogs(prev => [...prev, `✅ Создано ${data.storyboard?.frames?.length || 11} слоёв`]);
+        setSvgLogs(prev => [...prev, `⏱️ Время: ${data.totalTime}мс`]);
+      } else {
+        setSvgLogs(prev => [...prev, `❌ Ошибка: ${data.error || 'Неизвестная ошибка'}`]);
+        setSvgAgents(prev => prev.map(a => ({ ...a, status: 'waiting' as const, progress: 0, message: 'Ошибка' })));
+      }
+    } catch (error: any) {
+      setSvgLogs(prev => [...prev, `❌ Ошибка: ${error.message}`]);
+      setSvgAgents(prev => prev.map(a => ({ ...a, status: 'waiting' as const, progress: 0, message: 'Ошибка' })));
+    } finally {
+      setSvgLoading(false);
+    }
+  };
+
+  const regenerateSVG = async () => {
+    await generateSVG();
   };
 
   const regenerateImage = async (index: number) => {
@@ -612,6 +722,7 @@ export default function AnimationStudio() {
                 { id: 'overview', label: 'Обзор', icon: Film },
                 { id: 'scenes', label: 'Сцены', icon: Image },
                 { id: 'characters', label: 'Персонажи', icon: Users },
+                { id: 'svg', label: 'SVG', icon: Wand2 },
               ].map((tab) => (
                 <Button
                   key={tab.id}
@@ -958,6 +1069,228 @@ export default function AnimationStudio() {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+            )}
+
+            {/* SVG Tab */}
+            {activeTab === 'svg' && (
+              <div className="space-y-6">
+                <Card className="bg-white/5 border-white/10">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <Wand2 className="w-5 h-5" /> SVG Генератор
+                    </CardTitle>
+                    <CardDescription className="text-white/60">
+                      Создание SVG-раскадровки с помощью 11 специализированных агентов
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Task Type Selection */}
+                    <div>
+                      <label className="text-white/80 text-sm mb-2 block">Тип задачи</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { id: 'scene', label: '🎬 Сцена', desc: 'Кинематографическая сцена' },
+                          { id: 'banner', label: '📐 Баннер', desc: 'Рекламный баннер' },
+                          { id: 'ad', label: '📢 Реклама', desc: 'Рекламный креатив' },
+                          { id: 'social', label: '📱 Соцсети', desc: 'Пост для соцсетей' },
+                          { id: 'poster', label: '🖼️ Постер', desc: 'Афиша или плакат' },
+                        ].map((t) => (
+                          <Button
+                            key={t.id}
+                            size="sm"
+                            variant={svgTaskType === t.id ? 'default' : 'outline'}
+                            onClick={() => setSvgTaskType(t.id as any)}
+                            className={svgTaskType === t.id ? 'bg-purple-500' : 'border-white/20 text-white'}
+                          >
+                            {t.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Technical Specification */}
+                    <div>
+                      <label className="text-white/80 text-sm mb-2 block">
+                        Техническое задание (ТЗ)
+                      </label>
+                      <Textarea
+                        value={svgTaskDescription}
+                        onChange={(e) => setSvgTaskDescription(e.target.value)}
+                        placeholder="Опишите требования к изображению: стиль, цвета, настроение, ключевые элементы, целевая аудитория, бренд-требования..."
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40 min-h-[100px]"
+                      />
+                    </div>
+
+                    {/* Custom Text Fields for Ads/Banners */}
+                    {(svgTaskType === 'banner' || svgTaskType === 'ad' || svgTaskType === 'social' || svgTaskType === 'poster') && (
+                      <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 p-4 rounded-lg border border-white/10 space-y-3">
+                        <div className="text-white/60 text-sm mb-2">📝 Текст для контента</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-white/60 text-xs mb-1 block">Заголовок</label>
+                            <Input
+                              value={svgCustomText.title}
+                              onChange={(e) => setSvgCustomText(prev => ({ ...prev, title: e.target.value }))}
+                              placeholder="Название бренда или продукта"
+                              className="bg-white/5 border-white/10 text-white text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-white/60 text-xs mb-1 block">Подзаголовок</label>
+                            <Input
+                              value={svgCustomText.subtitle}
+                              onChange={(e) => setSvgCustomText(prev => ({ ...prev, subtitle: e.target.value }))}
+                              placeholder="Краткое описание"
+                              className="bg-white/5 border-white/10 text-white text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-white/60 text-xs mb-1 block">CTA кнопка</label>
+                            <Input
+                              value={svgCustomText.cta}
+                              onChange={(e) => setSvgCustomText(prev => ({ ...prev, cta: e.target.value }))}
+                              placeholder="Подробнее"
+                              className="bg-white/5 border-white/10 text-white text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-white/60 text-xs mb-1 block">Цена (опционально)</label>
+                            <Input
+                              value={svgCustomText.price}
+                              onChange={(e) => setSvgCustomText(prev => ({ ...prev, price: e.target.value }))}
+                              placeholder="990₽"
+                              className="bg-white/5 border-white/10 text-white text-sm"
+                            />
+                          </div>
+                        </div>
+                        {svgTaskType === 'social' && (
+                          <div>
+                            <label className="text-white/60 text-xs mb-1 block">Хэштег</label>
+                            <Input
+                              value={svgCustomText.hashtag}
+                              onChange={(e) => setSvgCustomText(prev => ({ ...prev, hashtag: e.target.value }))}
+                              placeholder="#форториум #анимация"
+                              className="bg-white/5 border-white/10 text-white text-sm"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <Button
+                      onClick={generateSVG}
+                      disabled={svgLoading}
+                      className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-12"
+                    >
+                      {svgLoading ? (
+                        <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Генерация SVG...</>
+                      ) : (
+                        <><Sparkles className="w-5 h-5 mr-2" /> Сгенерировать SVG</>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* SVG Agents Status */}
+                {svgAgents.length > 0 && (
+                  <Card className="bg-white/5 border-white/10">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-white text-sm flex items-center gap-2">
+                        <Bot className="w-4 h-4" /> SVG Агенты
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                        {svgAgents.map((agent) => (
+                          <div key={agent.id} className={`p-2 rounded-lg border text-center transition-all ${
+                            agent.status === 'done' ? 'bg-green-500/10 border-green-500/30' :
+                            agent.status === 'working' ? 'bg-purple-500/10 border-purple-500/30' :
+                            'bg-white/5 border-white/10'
+                          }`}>
+                            <span className="text-xl">{agent.icon}</span>
+                            <div className="text-white text-xs mt-1 truncate">{agent.name}</div>
+                            {agent.status === 'done' && <CheckCircle className="w-3 h-3 text-green-400 mx-auto mt-1" />}
+                            {agent.status === 'working' && <Loader2 className="w-3 h-3 text-purple-400 animate-spin mx-auto mt-1" />}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* SVG Logs */}
+                {svgLogs.length > 0 && (
+                  <Card className="bg-white/5 border-white/10">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-white text-sm">Логи SVG генерации</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="bg-black/30 p-3 rounded-lg font-mono text-xs text-green-400 max-h-32 overflow-y-auto">
+                        {svgLogs.map((log, i) => <div key={i}>{log}</div>)}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* SVG Results */}
+                {svgResult && (
+                  <>
+                    {/* Final Scene */}
+                    <Card className="bg-white/5 border-white/10">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-white text-sm">Финальная сцена</CardTitle>
+                          <div className="flex gap-2">
+                            <Badge variant="outline" className="border-green-500/30 text-green-400 text-xs">
+                              {svgResult.totalTime}мс
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={regenerateSVG}
+                              className="border-white/20 text-white"
+                            >
+                              <RefreshCw className="w-3 h-3 mr-1" /> Пересоздать
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div 
+                          className="bg-black/30 rounded-lg overflow-hidden"
+                          dangerouslySetInnerHTML={{ __html: svgResult.finalScene.svg }}
+                        />
+                      </CardContent>
+                    </Card>
+
+                    {/* Storyboard Grid */}
+                    <Card className="bg-white/5 border-white/10">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-white text-sm">
+                          Раскадровка ({svgResult.storyboard.frames.length} слоёв)
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                          {svgResult.storyboard.frames.map((frame) => (
+                            <div key={frame.id} className="bg-black/30 rounded-lg overflow-hidden border border-white/10">
+                              <div 
+                                className="aspect-video"
+                                dangerouslySetInnerHTML={{ __html: frame.svg }}
+                              />
+                              <div className="p-2 flex items-center gap-2">
+                                <span>{frame.agentIcon}</span>
+                                <span className="text-white/60 text-xs truncate">{frame.agentName}</span>
+                                {frame.success && <CheckCircle className="w-3 h-3 text-green-400 ml-auto" />}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
               </div>
             )}
 
