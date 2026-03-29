@@ -4,7 +4,7 @@ import ZAI from 'z-ai-web-dev-sdk';
 export const maxDuration = 120;
 
 /**
- * SVG-координатор v6.2.0
+ * SVG-координатор v6.7.0
  * AI-анализ ТЗ для понимания ЛЮБОГО описания персонажа
  */
 
@@ -695,7 +695,7 @@ export async function POST(request: NextRequest) {
       customText = {}
     } = body;
     
-    console.log('[SVG-Coordinator v6.2.0] Task:', taskType, 'Style:', style, 'TZ:', taskDescription?.substring(0, 50));
+    console.log('[SVG-Coordinator v6.7.0] Task:', taskType, 'Style:', style, 'TZ:', taskDescription?.substring(0, 50));
     const startTime = Date.now();
     
     // AI-анализ ТЗ - понимает ЛЮБОЕ описание
