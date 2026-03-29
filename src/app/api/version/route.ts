@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { CLIENT_VERSION } from '@/lib/version'
 
 /**
  * API endpoint для проверки версии
@@ -8,7 +9,7 @@ import { NextResponse } from 'next/server'
  * Клиент может сравнить свою версию с серверной и определить, нужно ли обновление.
  */
 export async function GET() {
-  const serverVersion = process.env.npm_package_version || '3.2.0'
+  const serverVersion = CLIENT_VERSION
   const minClientVersion = '3.0.0'
   
   return NextResponse.json({
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { clientVersion } = body
     
-    const serverVersion = process.env.npm_package_version || '3.2.0'
+    const serverVersion = CLIENT_VERSION
     const minClientVersion = '3.0.0'
     
     // Сравнение версий
