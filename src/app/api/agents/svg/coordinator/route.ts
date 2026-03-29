@@ -754,7 +754,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      version: '6.2.0',
+      version: '6.7.0',
       taskType,
       taskDescription: taskDescription || null,
       tzAnalysis: {
