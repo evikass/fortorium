@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server'
-import { CLIENT_VERSION } from '@/lib/version'
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+// Версия сервера (должна совпадать с CLIENT_VERSION)
+const SERVER_VERSION = '4.6.1'
 
 /**
  * API endpoint для проверки версии
@@ -9,7 +15,7 @@ import { CLIENT_VERSION } from '@/lib/version'
  * Клиент может сравнить свою версию с серверной и определить, нужно ли обновление.
  */
 export async function GET() {
-  const serverVersion = CLIENT_VERSION
+  const serverVersion = SERVER_VERSION
   const minClientVersion = '3.0.0'
   
   return NextResponse.json({
@@ -43,7 +49,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { clientVersion } = body
     
-    const serverVersion = CLIENT_VERSION
+    const serverVersion = SERVER_VERSION
     const minClientVersion = '3.0.0'
     
     // Сравнение версий
