@@ -4,8 +4,8 @@ import ZAI from 'z-ai-web-dev-sdk';
 export const maxDuration = 120;
 
 /**
- * SVG-координатор v9.3.0
- * AI-анализ ТЗ через z-ai-web-dev-sdk
+ * SVG-координатор v9.3.1
+ * AI-анализ ТЗ через z-ai-web-dev-sdk с явным API key
  */
 
 async function analyzeTZWithAI(tz: string): Promise<{
@@ -25,7 +25,12 @@ async function analyzeTZWithAI(tz: string): Promise<{
 
   try {
     console.log('[AI-TZ] Initializing ZAI SDK...');
-    const zai = await ZAI.create();
+    console.log('[AI-TZ] Z_AI_API_KEY present:', !!process.env.Z_AI_API_KEY);
+
+    // Инициализируем SDK с явной передачей API key
+    const zai = await ZAI.create({
+      apiKey: process.env.Z_AI_API_KEY
+    });
 
     console.log('[AI-TZ] Calling chat completions...');
 
@@ -304,7 +309,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { taskDescription = '', dimensions = { width: 1024, height: 576 }, customText = {} } = body;
     
-    console.log('[SVG v9.3.0] TZ:', taskDescription?.substring(0, 50));
+    console.log('[SVG v9.3.1] TZ:', taskDescription?.substring(0, 50));
     const startTime = Date.now();
 
     const tzAnalysis = await analyzeTZWithAI(taskDescription);
@@ -392,12 +397,12 @@ export async function POST(request: NextRequest) {
         <text x="75" font-size="8" fill="rgba(255,255,255,0.6)">| ${taskDescription?.substring(0,18) || 'ТЗ'}...</text>
       </g>
       
-      <text x="${w-12}" y="${h-6}" text-anchor="end" font-size="8" fill="rgba(255,255,255,0.2)">ФОРТОРИУМ v9.3.0 ${tzAnalysis.aiUsed ? '🤖AI' : '📝'}</text>
+      <text x="${w-12}" y="${h-6}" text-anchor="end" font-size="8" fill="rgba(255,255,255,0.2)">ФОРТОРИУМ v9.3.1 ${tzAnalysis.aiUsed ? '🤖AI' : '📝'}</text>
     </svg>`;
 
     return NextResponse.json({
       success: true,
-      version: '9.3.0',
+      version: '9.3.1',
       aiUsed: tzAnalysis.aiUsed,
       tzAnalysis: { characterType, characterName, location: detectedLocation, customElements, mood: tzAnalysis.mood, timeOfDay },
       totalTime: Date.now() - startTime,
