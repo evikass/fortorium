@@ -4,7 +4,7 @@ import ZAI from 'z-ai-web-dev-sdk';
 export const maxDuration = 120;
 
 /**
- * SVG-координатор v8.1.0
+ * SVG-координатор v9.0.0
  * AI-анализ ТЗ для понимания ЛЮБОГО описания персонажа
  */
 
@@ -130,40 +130,86 @@ function analyzeTZFallback(tz: string): {
   customElements: string[];
 } {
   const lowerTz = (tz || '').toLowerCase();
+  console.log('[Fallback] Analyzing:', lowerTz.substring(0, 100));
   
   const characterPatterns: Record<string, {name: string, patterns: string[]}> = {
-    'cat_detective': { name: 'Кот-детектив', patterns: ['кот', 'кошк', 'детектив', 'сыщик', 'cat', 'detective'] },
-    'wizard': { name: 'Волшебник', patterns: ['волшебник', 'маг', 'чародей', 'wizard', 'magic'] },
-    'fairy': { name: 'Фея', patterns: ['фея', 'эльф', 'fairy', 'крылья'] },
-    'knight': { name: 'Рыцарь', patterns: ['рыцарь', 'воин', 'knight', 'меч', 'броня'] },
-    'princess': { name: 'Принцесса', patterns: ['принцесс', 'королев', 'princess'] },
-    'robot': { name: 'Робот', patterns: ['робот', 'android', 'robot', 'механ'] },
-    'astronaut': { name: 'Астронавт', patterns: ['астронавт', 'космонавт', 'космос', 'astronaut'] },
-    'pirate': { name: 'Пират', patterns: ['пират', 'море', 'pirate', 'корабль'] },
-    'animal': { name: 'Лесной житель', patterns: ['медвед', 'лис', 'волк', 'заяц', 'животное'] },
-    'hero': { name: 'Герой', patterns: ['герой', 'путешеств', 'исследов', 'приключен'] }
+    'cat_detective': { name: 'Кот-детектив', patterns: ['кот', 'кошк', 'детектив', 'сыщик', 'cat', 'detective', 'мяу'] },
+    'wizard': { name: 'Волшебник', patterns: ['волшебник', 'маг', 'чародей', 'колдун', 'wizard', 'magic', 'заклинан'] },
+    'fairy': { name: 'Фея', patterns: ['фея', 'эльф', 'fairy', 'волшебн', 'pixie'] },
+    'knight': { name: 'Рыцарь', patterns: ['рыцарь', 'воин', 'богатыр', 'knight', 'меч', 'броня', 'дракон'] },
+    'princess': { name: 'Принцесса', patterns: ['принцесс', 'королев', 'царевн', 'princess', 'queen'] },
+    'robot': { name: 'Робот', patterns: ['робот', 'android', 'robot', 'механ', 'киборг'] },
+    'astronaut': { name: 'Астронавт', patterns: ['астронавт', 'космонавт', 'космос', 'astronaut', 'ракета', 'планета'] },
+    'pirate': { name: 'Пират', patterns: ['пират', 'море', 'корабль', 'pirate', 'клад', 'капитан'] },
+    'animal': { name: 'Лесной житель', patterns: ['медвед', 'лис', 'волк', 'заяц', 'животное', 'зверь', 'ёжик', 'белк'] },
+    'hero': { name: 'Герой-путешественник', patterns: ['герой', 'путешеств', 'исследов', 'приключен', 'отважн', 'смел', 'путник', 'странник'] },
+    'child': { name: 'Ребёнок', patterns: ['ребёнок', 'ребенок', 'малыш', 'дети', 'мальчик', 'девочка', 'парень', 'девушк', 'юнош', 'child', 'kid'] }
   };
 
-  let detectedCharacter = 'cat_detective';
-  let detectedName = 'Кот-детектив';
+  let detectedCharacter = 'hero'; // по умолчанию герой (более универсальный)
+  let detectedName = 'Герой';
 
   for (const [charType, data] of Object.entries(characterPatterns)) {
     if (data.patterns.some(p => lowerTz.includes(p))) {
       detectedCharacter = charType;
       detectedName = data.name;
+      console.log('[Fallback] Matched:', charType, 'via pattern');
       break;
     }
   }
+
+  // Определяем локацию
+  let location = 'волшебный лес';
+  const locationPatterns: Record<string, string[]> = {
+    'горы': ['гор', 'скал', 'вершин', 'mountain'],
+    'море/пляж': ['мор', 'пляж', 'океан', 'sea', 'ocean', 'берег'],
+    'город': ['город', 'town', 'city', 'улиц'],
+    'космос': ['космос', 'space', 'планет', 'звезд'],
+    'замок': ['замок', 'castle', 'дворец', 'башн'],
+    'деревня': ['деревн', 'село', 'village'],
+    'пустыня': ['пустын', 'desert', 'песок'],
+    'джунгли': ['джунгл', 'jungle', 'тропик']
+  };
+  
+  for (const [loc, patterns] of Object.entries(locationPatterns)) {
+    if (patterns.some(p => lowerTz.includes(p))) {
+      location = loc;
+      console.log('[Fallback] Location:', loc);
+      break;
+    }
+  }
+
+  // Определяем настроение
+  let mood = 'сказочный';
+  if (['мрачн', 'темн', 'dark', 'ужас', 'страшн'].some(p => lowerTz.includes(p))) mood = 'мрачный';
+  else if (['весёл', 'смешн', 'funny', 'happy', 'радост'].some(p => lowerTz.includes(p))) mood = 'весёлый';
+  else if (['тайн', 'загадк', 'mystery', 'secret'].some(p => lowerTz.includes(p))) mood = 'таинственный';
+  else if (['приключен', 'путешеств', 'adventure'].some(p => lowerTz.includes(p))) mood = 'приключенческий';
+
+  // Определяем время суток
+  let timeOfDay = 'день';
+  if (['ноч', 'night', 'лун'].some(p => lowerTz.includes(p))) timeOfDay = 'ночь';
+  else if (['вечер', 'закат', 'evening', 'sunset'].some(p => lowerTz.includes(p))) timeOfDay = 'вечер';
+  else if ( ['рассвет', 'утр', 'dawn', 'sunrise', 'morning'].some(p => lowerTz.includes(p))) timeOfDay = 'рассвет';
+
+  // Извлекаем дополнительные элементы
+  const customElements: string[] = [];
+  const elementPatterns = ['река', 'ручей', 'озеро', 'мост', 'замок', 'дом', 'изба', 'камни', 'скалы', 'туман', 'пещер'];
+  elementPatterns.forEach(el => {
+    if (lowerTz.includes(el)) customElements.push(el);
+  });
+
+  console.log('[Fallback] Result:', { detectedCharacter, detectedName, location, mood, timeOfDay, customElements });
 
   return {
     characterType: detectedCharacter,
     characterName: detectedName,
     characterDescription: '',
-    mood: 'сказочный',
-    location: 'волшебный лес',
-    timeOfDay: 'день',
+    mood,
+    location,
+    timeOfDay,
     keywords: [],
-    customElements: []
+    customElements
   };
 }
 
@@ -952,7 +998,7 @@ export async function POST(request: NextRequest) {
       customText = {}
     } = body;
     
-    console.log('[SVG-Coordinator v8.1.0] Task:', taskType, 'Style:', style, 'TZ:', taskDescription?.substring(0, 50));
+    console.log('[SVG-Coordinator v9.0.0] Task:', taskType, 'Style:', style, 'TZ:', taskDescription?.substring(0, 50));
     const startTime = Date.now();
     
     // AI-анализ ТЗ - понимает ЛЮБОЕ описание
@@ -1011,7 +1057,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      version: '8.1.0',
+      version: '9.0.0',
       taskType,
       taskDescription: taskDescription || null,
       tzAnalysis: {
@@ -1382,9 +1428,24 @@ function composeFinalScene(config: any): string {
   const characterType = tzAnalysis?.characterType || 'cat_detective';
   const characterName = tzAnalysis?.characterName || 'Кот-детектив';
   const detectedMood = tzAnalysis?.mood || 'сказочный';
+  const detectedLocation = tzAnalysis?.location || 'волшебный лес';
   const customElements = tzAnalysis?.customElements || [];
   
-  console.log(`[composeFinalScene] Использую AI-анализ: персонаж=${characterType} (${characterName}), настроение=${detectedMood}, элементы=${customElements.join(', ')}`);
+  // Добавляем элементы на основе локации
+  const locationElements: string[] = [];
+  if (detectedLocation.includes('гор')) {
+    locationElements.push('горы', 'скалы');
+  }
+  if (detectedLocation.includes('мор') || detectedLocation.includes('пляж')) {
+    locationElements.push('море', 'песок');
+  }
+  if (detectedLocation.includes('космос')) {
+    locationElements.push('звёзды');
+  }
+  
+  const allElements = [...customElements, ...locationElements];
+  
+  console.log(`[composeFinalScene] AI-анализ: персонаж=${characterType} (${characterName}), локация=${detectedLocation}, настроение=${detectedMood}, элементы=${allElements.join(', ')}`);
   
   const title = customText?.title || '';
   const subtitle = customText?.subtitle || '';
@@ -1583,7 +1644,7 @@ function composeFinalScene(config: any): string {
     }).join('')}
     
     <!-- ===== ДОПОЛНИТЕЛЬНЫЕ ЭЛЕМЕНТЫ ИЗ ТЗ (AI-анализ) ===== -->
-    ${customElements.includes('река') || customElements.includes('ручей') ? `
+    ${allElements.includes('река') || allElements.includes('ручей') ? `
     <!-- Река/ручей -->
     <path d="M${-20} ${h*0.75} Q${w*0.15} ${h*0.72} ${w*0.3} ${h*0.78} Q${w*0.5} ${h*0.85} ${w*0.7} ${h*0.82} Q${w*0.85} ${h*0.78} ${w+20} ${h*0.85}" 
       stroke="${palette.water[0]}" stroke-width="25" fill="none" opacity="0.8" stroke-linecap="round"/>
@@ -1592,7 +1653,7 @@ function composeFinalScene(config: any): string {
     <path d="M${-15} ${h*0.76} Q${w*0.2} ${h*0.74} ${w*0.35} ${h*0.79}" stroke="white" stroke-width="3" fill="none" opacity="0.3"/>
     ` : ''}
     
-    ${customElements.includes('замок') || customElements.includes('башня') ? `
+    ${allElements.includes('замок') || allElements.includes('башня') ? `
     <!-- Замок/башня на горизонте -->
     <g transform="translate(${w*0.75}, ${h*0.48})">
       <rect x="-25" y="-80" width="50" height="80" fill="#8B7355" opacity="0.6"/>
@@ -1605,7 +1666,7 @@ function composeFinalScene(config: any): string {
     </g>
     ` : ''}
     
-    ${customElements.includes('мост') ? `
+    ${allElements.includes('мост') ? `
     <!-- Мост -->
     <g transform="translate(${w*0.4}, ${h*0.78})">
       <path d="M-60,0 Q-30,-25 0,-20 Q30,-25 60,0" stroke="#8B4513" stroke-width="8" fill="none"/>
@@ -1615,14 +1676,14 @@ function composeFinalScene(config: any): string {
     </g>
     ` : ''}
     
-    ${customElements.includes('озеро') || customElements.includes('пруд') ? `
+    ${allElements.includes('озеро') || allElements.includes('пруд') ? `
     <!-- Озеро/пруд -->
     <ellipse cx="${w*0.65}" cy="${h*0.82}" rx="80" ry="35" fill="${palette.water[1]}" opacity="0.7"/>
     <ellipse cx="${w*0.65}" cy="${h*0.82}" rx="60" ry="25" fill="${palette.water[2]}" opacity="0.5"/>
     <ellipse cx="${w*0.6}" cy="${h*0.80}" rx="25" ry="10" fill="white" opacity="0.2"/>
     ` : ''}
     
-    ${customElements.includes('камни') || customElements.includes('скалы') ? `
+    ${allElements.includes('камни') || allElements.includes('скалы') ? `
     <!-- Камни -->
     ${Array.from({length: 8}, () => {
       const x = sceneRand() * w;
@@ -1633,7 +1694,7 @@ function composeFinalScene(config: any): string {
     }).join('')}
     ` : ''}
     
-    ${customElements.includes('дом') || customElements.includes('изба') || customElements.includes('домик') ? `
+    ${allElements.includes('дом') || allElements.includes('изба') || allElements.includes('домик') ? `
     <!-- Домик -->
     <g transform="translate(${w*0.2}, ${h*0.72})">
       <rect x="-30" y="-40" width="60" height="40" fill="#8B4513" opacity="0.7"/>
@@ -1646,14 +1707,84 @@ function composeFinalScene(config: any): string {
     </g>
     ` : ''}
     
-    ${customElements.includes('солнце') || customElements.includes('жаркое') ? `
+    ${allElements.includes('солнце') || allElements.includes('жаркое') ? `
     <!-- Дополнительное солнце -->
     <circle cx="${w*0.15}" cy="${h*0.12}" r="50" fill="#FFD700" opacity="0.3" filter="url(#fGlow)"/>
     ` : ''}
     
-    ${customElements.includes('туман') || customElements.includes('пасмурно') ? `
+    ${allElements.includes('туман') || allElements.includes('пасмурно') ? `
     <!-- Туман -->
     <rect y="${h*0.4}" width="100%" height="${h*0.3}" fill="url(#fHorizonHaze)" opacity="0.6"/>
+    ` : ''}
+    
+    ${allElements.includes('горы') ? `
+    <!-- ГОРЫ - высокие заснеженные пики -->
+    <g opacity="0.9">
+      <!-- Дальние горы (светлее, меньше контраста) -->
+      <path d="M${w*0.0} ${h*0.5} L${w*0.15} ${h*0.25} L${w*0.3} ${h*0.45} L${w*0.4} ${h*0.2} L${w*0.55} ${h*0.42} L${w*0.65} ${h*0.18} L${w*0.8} ${h*0.38} L${w*0.95} ${h*0.22} L${w} ${h*0.45} L${w} ${h*0.5} Z" 
+        fill="#8BA5B5" opacity="0.5"/>
+      <!-- Снег на дальних вершинах -->
+      <path d="M${w*0.35} ${h*0.22} L${w*0.4} ${h*0.2} L${w*0.45} ${h*0.24}" fill="white" opacity="0.6"/>
+      <path d="M${w*0.6} ${h*0.2} L${w*0.65} ${h*0.18} L${w*0.7} ${h*0.22}" fill="white" opacity="0.6"/>
+      <path d="M${w*0.9} ${h*0.24} L${w*0.95} ${h*0.22} L${w} ${h*0.26}" fill="white" opacity="0.6"/>
+      
+      <!-- Ближние горы (темнее, больше деталей) -->
+      <path d="M${-20} ${h*0.55} L${w*0.1} ${h*0.35} L${w*0.2} ${h*0.48} L${w*0.35} ${h*0.28} L${w*0.5} ${h*0.45} L${w*0.6} ${h*0.25} L${w*0.75} ${h*0.42} L${w*0.85} ${h*0.3} L${w} ${h*0.48} L${w+20} ${h*0.55}" 
+        fill="#6B8595" opacity="0.7"/>
+      <!-- Снег на ближних вершинах -->
+      <path d="M${w*0.32} ${h*0.3} L${w*0.35} ${h*0.28} L${w*0.38} ${h*0.32}" fill="white" opacity="0.8"/>
+      <path d="M${w*0.57} ${h*0.27} L${w*0.6} ${h*0.25} L${w*0.63} ${h*0.29}" fill="white" opacity="0.8"/>
+      <path d="M${w*0.82} ${h*0.32} L${w*0.85} ${h*0.3} L${w*0.88} ${h*0.34}" fill="white" opacity="0.8"/>
+      <!-- Тени на склонах -->
+      <path d="M${w*0.35} ${h*0.28} L${w*0.5} ${h*0.45} L${w*0.42} ${h*0.42} Z" fill="#5A7585" opacity="0.3"/>
+      <path d="M${w*0.6} ${h*0.25} L${w*0.75} ${h*0.42} L${w*0.68} ${h*0.4} Z" fill="#5A7585" opacity="0.3"/>
+    </g>
+    ` : ''}
+    
+    ${allElements.includes('море') ? `
+    <!-- МОРЕ -->
+    <rect y="${h*0.6}" width="100%" height="${h*0.4}" fill="#1E90FF" opacity="0.6"/>
+    <!-- Волны -->
+    ${Array.from({length: 8}, (_, i) => {
+      const waveY = h * 0.65 + i * h * 0.04;
+      const waveH = 3 + sceneRand() * 4;
+      return `<path d="M0 ${waveY} Q${w*0.1} ${waveY-waveH} ${w*0.2} ${waveY} Q${w*0.3} ${waveY+waveH} ${w*0.4} ${waveY} Q${w*0.5} ${waveY-waveH} ${w*0.6} ${waveY} Q${w*0.7} ${waveY+waveH} ${w*0.8} ${waveY} Q${w*0.9} ${waveY-waveH} ${w} ${waveY}" 
+        stroke="rgba(255,255,255,${0.2 + i*0.05})" stroke-width="2" fill="none"/>`;
+    }).join('')}
+    <!-- Блики на воде -->
+    ${Array.from({length: 15}, () => {
+      const x = sceneRand() * w;
+      const y = h * 0.65 + sceneRand() * h * 0.3;
+      return `<ellipse cx="${x}" cy="${y}" rx="${sceneRand()*30+10}" ry="${sceneRand()*3+1}" fill="white" opacity="${sceneRand()*0.2+0.1}"/>`;
+    }).join('')}
+    ` : ''}
+    
+    ${allElements.includes('звёзды') ? `
+    <!-- ЗВЁЗДЫ (космос) -->
+    ${Array.from({length: 100}, () => {
+      const x = sceneRand() * w;
+      const y = sceneRand() * h * 0.6;
+      const r = sceneRand() * 2 + 0.5;
+      return `<circle cx="${x}" cy="${y}" r="${r}" fill="white" opacity="${sceneRand()*0.7+0.3}"/>`;
+    }).join('')}
+    <!-- Яркие звезды -->
+    ${Array.from({length: 20}, () => {
+      const x = sceneRand() * w;
+      const y = sceneRand() * h * 0.5;
+      return `<circle cx="${x}" cy="${y}" r="3" fill="white" opacity="0.8" filter="url(#fGlow)"/>`;
+    }).join('')}
+    ` : ''}
+    
+    ${allElements.includes('скалы') && !allElements.includes('горы') ? `
+    <!-- СКАЛЫ -->
+    ${Array.from({length: 6}, () => {
+      const x = sceneRand() * w;
+      const y = h * 0.7 + sceneRand() * h * 0.15;
+      const scale = sceneRand() * 0.5 + 0.5;
+      const height = 30 * scale;
+      const width = 20 * scale;
+      return `<path d="M${x-width/2} ${y} L${x-width/3} ${y-height*0.7} L${x} ${y-height} L${x+width/3} ${y-height*0.8} L${x+width/2} ${y}" fill="#5A5A5A"/>`;
+    }).join('')}
     ` : ''}
     
     <!-- Background trees - ДАЛЬНИЕ (на холмах) -->
@@ -1699,6 +1830,6 @@ function composeFinalScene(config: any): string {
     ${subtitle ? `<text x="${w/2}" y="${h*0.16}" text-anchor="middle" font-size="16" fill="rgba(255,255,255,0.8)">${subtitle}</text>` : ''}
     ${taskType !== 'scene' ? `<rect x="${w/2-80}" y="${h*0.88}" width="160" height="40" rx="20" fill="${palette.accent[0]}"/><text x="${w/2}" y="${h*0.88+26}" text-anchor="middle" font-size="15" font-weight="bold" fill="white">${cta}</text>` : ''}
     
-    <text x="${w-12}" y="${h-8}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.15)">ФОРТОРИУМ v8.1.0</text>
+    <text x="${w-12}" y="${h-8}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.15)">ФОРТОРИУМ v9.0.0</text>
   </svg>`;
 }
