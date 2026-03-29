@@ -4,7 +4,7 @@ import ZAI from 'z-ai-web-dev-sdk';
 export const maxDuration = 120;
 
 /**
- * SVG-координатор v9.0.0
+ * SVG-координатор v9.1.0
  * AI-анализ ТЗ для понимания ЛЮБОГО описания персонажа
  */
 
@@ -37,7 +37,7 @@ async function analyzeTZWithAI(tz: string): Promise<{
   }
 
   try {
-    console.log('[AI-TZ-Analysis] Creating ZAI client...');
+    console.log('[AI-TZ-Analysis] Trying ZAI SDK...');
     const zai = await ZAI.create();
     console.log('[AI-TZ-Analysis] ZAI client created, calling LLM...');
     
@@ -110,11 +110,11 @@ async function analyzeTZWithAI(tz: string): Promise<{
       console.log('[AI-TZ-Analysis] No JSON found in response');
     }
   } catch (error: any) {
-    console.error('[AI-TZ-Analysis] ERROR:', error.message, error.stack);
+    console.error('[AI-TZ-Analysis] ZAI SDK ERROR:', error.message);
   }
 
   // Fallback - простое сопоставление если AI не сработал
-  console.log('[AI-TZ-Analysis] Using FALLBACK (keywords)');
+  console.log('[AI-TZ-Analysis] Using FALLBACK (keyword matching)');
   return analyzeTZFallback(tz);
 }
 
@@ -998,7 +998,7 @@ export async function POST(request: NextRequest) {
       customText = {}
     } = body;
     
-    console.log('[SVG-Coordinator v9.0.0] Task:', taskType, 'Style:', style, 'TZ:', taskDescription?.substring(0, 50));
+    console.log('[SVG-Coordinator v9.1.0] Task:', taskType, 'Style:', style, 'TZ:', taskDescription?.substring(0, 50));
     const startTime = Date.now();
     
     // AI-анализ ТЗ - понимает ЛЮБОЕ описание
@@ -1057,7 +1057,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      version: '9.0.0',
+      version: '9.1.0',
       taskType,
       taskDescription: taskDescription || null,
       tzAnalysis: {
@@ -1830,6 +1830,6 @@ function composeFinalScene(config: any): string {
     ${subtitle ? `<text x="${w/2}" y="${h*0.16}" text-anchor="middle" font-size="16" fill="rgba(255,255,255,0.8)">${subtitle}</text>` : ''}
     ${taskType !== 'scene' ? `<rect x="${w/2-80}" y="${h*0.88}" width="160" height="40" rx="20" fill="${palette.accent[0]}"/><text x="${w/2}" y="${h*0.88+26}" text-anchor="middle" font-size="15" font-weight="bold" fill="white">${cta}</text>` : ''}
     
-    <text x="${w-12}" y="${h-8}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.15)">ФОРТОРИУМ v9.0.0</text>
+    <text x="${w-12}" y="${h-8}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.15)">ФОРТОРИУМ v9.1.0</text>
   </svg>`;
 }
