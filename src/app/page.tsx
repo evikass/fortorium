@@ -143,6 +143,9 @@ export default function AnimationStudio() {
 
   // SVG Agents State
   const [svgTaskType, setSvgTaskType] = useState<'scene' | 'banner' | 'ad' | 'social' | 'poster'>('scene');
+  const [svgStyle, setSvgStyle] = useState<'ghibli' | 'disney' | 'anime' | 'pixar'>('ghibli');
+  const [svgTimeOfDay, setSvgTimeOfDay] = useState<'день' | 'ночь' | 'вечер' | 'рассвет'>('день');
+  const [svgDimensions, setSvgDimensions] = useState({ width: 1024, height: 576 });
   const [svgTaskDescription, setSvgTaskDescription] = useState('');
   const [svgCustomText, setSvgCustomText] = useState({
     title: '',
@@ -424,12 +427,12 @@ export default function AnimationStudio() {
         body: JSON.stringify({
           taskType: svgTaskType,
           taskDescription: svgTaskDescription,
-          style: style,
-          dimensions: { width: 1024, height: 576 },
+          style: svgStyle,
+          dimensions: svgDimensions,
           customText: svgCustomText,
           scene: {
             location: svgTaskType === 'scene' ? 'волшебный лес' : 'studio',
-            timeOfDay: 'день',
+            timeOfDay: svgTimeOfDay,
             mood: 'сказочный'
           }
         })
@@ -513,7 +516,7 @@ export default function AnimationStudio() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white tracking-wide">ФОРТОРИУМ</h1>
-              <p className="text-xs text-white/50">AI Анимационная Студия v4.6.1</p>
+              <p className="text-xs text-white/50">AI Анимационная Студия v4.7.0</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -1104,6 +1107,75 @@ export default function AnimationStudio() {
                             className={svgTaskType === t.id ? 'bg-purple-500' : 'border-white/20 text-white'}
                           >
                             {t.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Style Selection */}
+                    <div>
+                      <label className="text-white/80 text-sm mb-2 block">Визуальный стиль</label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {[
+                          { id: 'ghibli', label: 'Ghibli', icon: '🌸', desc: 'Акварель' },
+                          { id: 'disney', label: 'Disney', icon: '🏰', desc: 'Яркий' },
+                          { id: 'anime', label: 'Anime', icon: '⚡', desc: 'Динамичный' },
+                          { id: 'pixar', label: 'Pixar', icon: '🧸', desc: '3D стиль' },
+                        ].map((s) => (
+                          <Button
+                            key={s.id}
+                            size="sm"
+                            variant={svgStyle === s.id ? 'default' : 'outline'}
+                            onClick={() => setSvgStyle(s.id as any)}
+                            className={svgStyle === s.id ? 'bg-purple-500' : 'border-white/20 text-white'}
+                          >
+                            {s.icon} {s.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Time of Day */}
+                    <div>
+                      <label className="text-white/80 text-sm mb-2 block">Время суток</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { id: 'день', label: '☀️ День' },
+                          { id: 'вечер', label: '🌅 Вечер' },
+                          { id: 'ночь', label: '🌙 Ночь' },
+                          { id: 'рассвет', label: '🌄 Рассвет' },
+                        ].map((t) => (
+                          <Button
+                            key={t.id}
+                            size="sm"
+                            variant={svgTimeOfDay === t.id ? 'default' : 'outline'}
+                            onClick={() => setSvgTimeOfDay(t.id as any)}
+                            className={svgTimeOfDay === t.id ? 'bg-purple-500' : 'border-white/20 text-white'}
+                          >
+                            {t.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Dimensions */}
+                    <div>
+                      <label className="text-white/80 text-sm mb-2 block">Размер изображения</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { w: 1024, h: 576, label: '16:9 Широкий' },
+                          { w: 800, h: 600, label: '4:3 Стандарт' },
+                          { w: 600, h: 600, label: '1:1 Квадрат' },
+                          { w: 576, h: 1024, label: '9:16 Истории' },
+                        ].map((d) => (
+                          <Button
+                            key={`${d.w}x${d.h}`}
+                            size="sm"
+                            variant={svgDimensions.width === d.w ? 'default' : 'outline'}
+                            onClick={() => setSvgDimensions({ width: d.w, height: d.h })}
+                            className={svgDimensions.width === d.w ? 'bg-purple-500' : 'border-white/20 text-white'}
+                          >
+                            {d.label}
                           </Button>
                         ))}
                       </div>

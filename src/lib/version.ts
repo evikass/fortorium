@@ -7,7 +7,7 @@
  */
 
 // Текущая версия клиента
-export const CLIENT_VERSION = '4.6.1'
+export const CLIENT_VERSION = '4.7.0'
 
 // Ключ для хранения версии в localStorage
 const VERSION_KEY = 'fortorium_version'
