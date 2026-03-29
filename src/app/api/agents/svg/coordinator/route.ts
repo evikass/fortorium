@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import ZAI from 'z-ai-web-dev-sdk';
 
 export const maxDuration = 120;
 
 /**
- * SVG-координатор v9.2.0
- * AI-анализ ТЗ через переменную окружения Z_AI_API_KEY
+ * SVG-координатор v9.3.0
+ * AI-анализ ТЗ через z-ai-web-dev-sdk
  */
-
-const AI_BASE_URL = process.env.Z_AI_BASE_URL || 'https://api.zukijourney.com/v1';
-const AI_API_KEY = process.env.Z_AI_API_KEY || '';
 
 async function analyzeTZWithAI(tz: string): Promise<{
   characterType: string;
@@ -17,66 +15,68 @@ async function analyzeTZWithAI(tz: string): Promise<{
   location: string;
   timeOfDay: string;
   customElements: string[];
+  aiUsed: boolean;
 }> {
-  console.log('[AI-TZ] Starting for:', tz?.substring(0, 80));
-  console.log('[AI-TZ] API Key present:', !!AI_API_KEY);
-  
-  if (!tz || tz.trim().length < 3) {
-    return { characterType: 'hero', characterName: 'Герой', mood: 'сказочный', location: 'волшебный лес', timeOfDay: 'день', customElements: [] };
-  }
+  console.log('[AI-TZ v9.3] Starting for:', tz?.substring(0, 80));
 
-  if (!AI_API_KEY) {
-    console.log('[AI-TZ] No API key, using fallback');
-    return analyzeTZFallback(tz);
+  if (!tz || tz.trim().length < 3) {
+    return { characterType: 'hero', characterName: 'Герой', mood: 'сказочный', location: 'волшебный лес', timeOfDay: 'день', customElements: [], aiUsed: false };
   }
 
   try {
-    console.log('[AI-TZ] Calling API...');
-    const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'Анализатор описаний для SVG. Типы: cat_detective,wizard,fairy,knight,princess,robot,astronaut,pirate,animal,hero,child. Настроения: сказочный,мрачный,весёлый,таинственный,приключенческий. Локации: волшебный лес,город,море,горы,космос,замок. Ответ JSON: {"characterType":"hero","characterName":"Герой","mood":"сказочный","location":"волшебный лес","timeOfDay":"день","customElements":[]}' },
-          { role: 'user', content: `Анализируй: "${tz}"` }
-        ],
-        temperature: 0.1,
-        max_tokens: 150
-      })
+    console.log('[AI-TZ] Initializing ZAI SDK...');
+    const zai = await ZAI.create();
+
+    console.log('[AI-TZ] Calling chat completions...');
+
+    const systemPrompt = `Ты анализатор описаний для генерации SVG-сцен. Твоя задача - извлечь из описания:
+1. Тип персонажа (один из): cat_detective, wizard, fairy, knight, princess, robot, astronaut, pirate, animal, hero, child
+2. Имя персонажа (придумай подходящее на основе описания)
+3. Настроение сцены: сказочный, мрачный, весёлый, таинственный, приключенческий
+4. Локацию: волшебный лес, город, море, горы, космос, замок, пещера, пустыня
+5. Время суток: день, ночь, вечер, рассвет
+6. Дополнительные элементы: массив строк (река, озеро, мост, дом, замок, камни, скалы, туман, радуга, водопад)
+
+ВАЖНО: Анализируй смысл описания, а не только ключевые слова!
+
+Ответ ТОЛЬКО в формате JSON без markdown:
+{"characterType":"тип","characterName":"Имя","mood":"настроение","location":"локация","timeOfDay":"время","customElements":["элемент1"]}`;
+
+    const completion = await zai.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Проанализируй это описание и создай подходящую сцену: "${tz}"` }
+      ],
+      temperature: 0.3,
+      max_tokens: 300
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('[AI-TZ] API Error:', response.status, err);
-      return analyzeTZFallback(tz);
-    }
+    const content = completion.choices?.[0]?.message?.content || '';
+    console.log('[AI-TZ] AI Response:', content.substring(0, 200));
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    console.log('[AI-TZ] Response:', content.substring(0, 150));
-    
+    // Извлекаем JSON из ответа
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      console.log('[AI-TZ] SUCCESS:', parsed);
+      console.log('[AI-TZ] ✅ SUCCESS - AI analyzed:', parsed);
       return {
         characterType: parsed.characterType || 'hero',
         characterName: parsed.characterName || 'Персонаж',
         mood: parsed.mood || 'сказочный',
         location: parsed.location || 'волшебный лес',
         timeOfDay: parsed.timeOfDay || 'день',
-        customElements: parsed.customElements || []
+        customElements: parsed.customElements || [],
+        aiUsed: true
       };
     }
   } catch (error: any) {
-    console.error('[AI-TZ] Error:', error.message);
+    console.error('[AI-TZ] ❌ SDK Error:', error.message);
+    console.error('[AI-TZ] Error stack:', error.stack);
   }
 
-  return analyzeTZFallback(tz);
+  console.log('[AI-TZ] Using keyword fallback');
+  const fallback = analyzeTZFallback(tz);
+  return { ...fallback, aiUsed: false };
 }
 
 function analyzeTZFallback(tz: string): {
@@ -304,11 +304,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { taskDescription = '', dimensions = { width: 1024, height: 576 }, customText = {} } = body;
     
-    console.log('[SVG v9.2.0] TZ:', taskDescription?.substring(0, 50));
+    console.log('[SVG v9.3.0] TZ:', taskDescription?.substring(0, 50));
     const startTime = Date.now();
-    
+
     const tzAnalysis = await analyzeTZWithAI(taskDescription);
     console.log('[SVG] Analysis:', tzAnalysis);
+    console.log('[SVG] AI was used:', tzAnalysis.aiUsed);
     
     const palette = STYLE_PALETTES.ghibli;
     const sceneRand = seededRandom(999);
@@ -391,13 +392,14 @@ export async function POST(request: NextRequest) {
         <text x="75" font-size="8" fill="rgba(255,255,255,0.6)">| ${taskDescription?.substring(0,18) || 'ТЗ'}...</text>
       </g>
       
-      <text x="${w-12}" y="${h-6}" text-anchor="end" font-size="8" fill="rgba(255,255,255,0.2)">ФОРТОРИУМ v9.2.0</text>
+      <text x="${w-12}" y="${h-6}" text-anchor="end" font-size="8" fill="rgba(255,255,255,0.2)">ФОРТОРИУМ v9.3.0 ${tzAnalysis.aiUsed ? '🤖AI' : '📝'}</text>
     </svg>`;
-    
+
     return NextResponse.json({
       success: true,
-      version: '9.2.0',
-      tzAnalysis: { characterType, characterName, location: detectedLocation, customElements },
+      version: '9.3.0',
+      aiUsed: tzAnalysis.aiUsed,
+      tzAnalysis: { characterType, characterName, location: detectedLocation, customElements, mood: tzAnalysis.mood, timeOfDay },
       totalTime: Date.now() - startTime,
       finalScene: { svg, success: true }
     });
