@@ -4,7 +4,7 @@ import ZAI from 'z-ai-web-dev-sdk';
 export const maxDuration = 120;
 
 /**
- * SVG-координатор v6.7.0
+ * SVG-координатор v7.0.0-AI
  * AI-анализ ТЗ для понимания ЛЮБОГО описания персонажа
  */
 
@@ -695,7 +695,7 @@ export async function POST(request: NextRequest) {
       customText = {}
     } = body;
     
-    console.log('[SVG-Coordinator v6.7.0] Task:', taskType, 'Style:', style, 'TZ:', taskDescription?.substring(0, 50));
+    console.log('[SVG-Coordinator v7.0.0-AI] Task:', taskType, 'Style:', style, 'TZ:', taskDescription?.substring(0, 50));
     const startTime = Date.now();
     
     // AI-анализ ТЗ - понимает ЛЮБОЕ описание
@@ -754,7 +754,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      version: '6.7.0',
+      version: '7.0.0-AI',
       taskType,
       taskDescription: taskDescription || null,
       tzAnalysis: {
@@ -1442,6 +1442,6 @@ function composeFinalScene(config: any): string {
     ${subtitle ? `<text x="${w/2}" y="${h*0.16}" text-anchor="middle" font-size="16" fill="rgba(255,255,255,0.8)">${subtitle}</text>` : ''}
     ${taskType !== 'scene' ? `<rect x="${w/2-80}" y="${h*0.88}" width="160" height="40" rx="20" fill="${palette.accent[0]}"/><text x="${w/2}" y="${h*0.88+26}" text-anchor="middle" font-size="15" font-weight="bold" fill="white">${cta}</text>` : ''}
     
-    <text x="${w-12}" y="${h-8}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.15)">ФОРТОРИУМ v6.7.0</text>
+    <text x="${w-12}" y="${h-8}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.15)">ФОРТОРИУМ v7.0.0-AI</text>
   </svg>`;
 }
