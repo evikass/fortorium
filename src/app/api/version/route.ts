@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 // Версия сервера (должна совпадать с CLIENT_VERSION)
-const SERVER_VERSION = '9.1.0'
+const SERVER_VERSION = '9.2.0'
 
 /**
  * API endpoint для проверки версии
