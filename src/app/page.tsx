@@ -513,7 +513,7 @@ export default function AnimationStudio() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white tracking-wide">ФОРТОРИУМ</h1>
-              <p className="text-xs text-white/50">AI Анимационная Студия v{CLIENT_VERSION}</p>
+              <p className="text-xs text-white/50">AI Анимационная Студия v4.6.1</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
