@@ -6,8 +6,8 @@
  * конфликты между версиями клиента и API.
  */
 
-// Текущая версия клиента (из package.json)
-export const CLIENT_VERSION = '4.6.0'
+// Текущая версия клиента
+export const CLIENT_VERSION = '4.6.1'
 
 // Ключ для хранения версии в localStorage
 const VERSION_KEY = 'fortorium_version'
