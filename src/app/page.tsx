@@ -799,181 +799,191 @@ export default function AnimationStudio() {
         {activeMainTab === 'svg' && (
           <div>
             <h3 className="text-xl font-bold text-white mb-1">🎨 SVG-команда: 10 специализированных агентов</h3>
-            <p className="text-white/50 mb-6">Каждый агент отвечает за свою часть создания изображения</p>
+            <p className="text-white/50 mb-4">Каждый агент создаёт полноценный SVG кадр параллельно с другими</p>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Settings Panel */}
-              <Card className="bg-white/5 border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-white text-lg">⚙️ Настройки сцены</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-white/80 text-sm mb-1 block">Локация</label>
-                    <select 
-                      value={svgSceneSettings.location}
-                      onChange={(e) => setSvgSceneSettings(prev => ({ ...prev, location: e.target.value }))}
-                      className="w-full bg-white/5 border-white/10 text-white rounded-lg p-2"
-                    >
-                      <option value="лес">🌲 Лес</option>
-                      <option value="море">🌊 Море</option>
-                      <option value="город">🏙️ Город</option>
-                      <option value="космос">🚀 Космос</option>
-                      <option value="замок">🏰 Замок</option>
-                      <option value="горы">⛰️ Горы</option>
-                      <option value="сад">🌸 Сад</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-white/80 text-sm mb-1 block">Время суток</label>
-                    <select 
-                      value={svgSceneSettings.timeOfDay}
-                      onChange={(e) => setSvgSceneSettings(prev => ({ ...prev, timeOfDay: e.target.value }))}
-                      className="w-full bg-white/5 border-white/10 text-white rounded-lg p-2"
-                    >
-                      <option value="утро">🌅 Утро</option>
-                      <option value="день">☀️ День</option>
-                      <option value="вечер">🌇 Вечер</option>
-                      <option value="ночь">🌙 Ночь</option>
-                      <option value="рассвет">🌄 Рассвет</option>
-                      <option value="закат">🌅 Закат</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-white/80 text-sm mb-1 block">Настроение</label>
-                    <select 
-                      value={svgSceneSettings.mood}
-                      onChange={(e) => setSvgSceneSettings(prev => ({ ...prev, mood: e.target.value }))}
-                      className="w-full bg-white/5 border-white/10 text-white rounded-lg p-2"
-                    >
-                      <option value="спокойный">😌 Спокойный</option>
-                      <option value="радостный">😊 Радостный</option>
-                      <option value="таинственный">🔮 Таинственный</option>
-                      <option value="напряжённый">😰 Напряжённый</option>
-                      <option value="волшебный">✨ Волшебный</option>
-                      <option value="грустный">😢 Грустный</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-white/80 text-sm mb-1 block">Стиль</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {styles.map((s) => (
-                        <button
-                          key={s.value}
-                          onClick={() => setSvgSceneSettings(prev => ({ ...prev, style: s.value }))}
-                          className={`p-2 rounded-lg text-center transition text-sm ${
-                            svgSceneSettings.style === s.value 
-                              ? 'border-2 border-purple-500 bg-purple-500/20 text-white' 
-                              : 'border border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-                          }`}
-                        >
-                          <span className="mr-1">{s.icon}</span>
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <Button
-                    onClick={generateSvgScene}
-                    disabled={svgLoading}
-                    className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
-                  >
-                    {svgLoading ? (
-                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Создание...</>
-                    ) : (
-                      <><Sparkles className="w-4 h-4 mr-2" /> Создать SVG-сцену</>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
+            {/* Настройки и кнопка */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+              <div>
+                <label className="text-white/80 text-sm mb-1 block">Локация</label>
+                <select 
+                  value={svgSceneSettings.location}
+                  onChange={(e) => setSvgSceneSettings(prev => ({ ...prev, location: e.target.value }))}
+                  className="w-full bg-white/5 border-white/10 text-white rounded-lg p-2.5"
+                >
+                  <option value="лес">🌲 Лес</option>
+                  <option value="море">🌊 Море</option>
+                  <option value="город">🏙️ Город</option>
+                  <option value="космос">🚀 Космос</option>
+                  <option value="замок">🏰 Замок</option>
+                  <option value="горы">⛰️ Горы</option>
+                  <option value="сад">🌸 Сад</option>
+                </select>
+              </div>
               
-              {/* Agents Grid */}
-              <div className="lg:col-span-2">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                  {SVG_AGENTS.map((agent) => {
-                    const agentStatus = svgAgents.find(a => a.id === agent.id);
-                    return (
-                      <Card key={agent.id} className={`bg-white/5 border-white/10 transition-colors ${agentStatus?.status === 'done' ? 'border-green-500/30' : ''}`}>
-                        <CardContent className="p-3 text-center">
-                          <div className={`w-10 h-10 rounded-lg ${agent.color} flex items-center justify-center text-xl mx-auto mb-2`}>
-                            {agent.icon}
-                          </div>
-                          <div className="text-xs font-medium text-white mb-1">{agent.name}</div>
-                          <Badge variant="outline" className={`text-[10px] ${
-                            agentStatus?.status === 'done' ? 'border-green-500/30 text-green-400' :
-                            agentStatus?.status === 'working' ? 'border-yellow-500/30 text-yellow-400' :
-                            'border-white/20 text-white/50'
-                          }`}>
-                            {agentStatus?.status === 'done' ? '✓' :
-                             agentStatus?.status === 'working' ? '...' : '○'}
-                          </Badge>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-                
-                {/* SVG Result */}
-                {svgResult && (
-                  <Card className="bg-white/5 border-white/10 mt-4">
-                    <CardHeader>
-                      <CardTitle className="text-white text-lg">🖼️ Результат</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {svgResult.svg ? (
-                        <div className="bg-black/30 rounded-lg p-4 overflow-auto">
-                          <div 
-                            className="prose prose-invert max-w-none"
-                            dangerouslySetInnerHTML={{ __html: svgResult.svg.substring(0, 500) + '...' }}
-                          />
-                          <div className="mt-4 text-xs text-white/50">
-                            SVG код сгенерирован ({svgResult.svg?.length || 0} символов)
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-white/50 text-center py-8">
-                          Нажмите "Создать SVG-сцену" для генерации
-                        </div>
-                      )}
-                      
-                      {/* Palette Info */}
-                      {svgResult.agents?.palette?.palette && (
-                        <div className="mt-4">
-                          <div className="text-xs text-white/50 mb-2">Цветовая палитра:</div>
-                          <div className="flex gap-2">
-                            {svgResult.agents.palette.palette.harmony?.map((color: string, i: number) => (
-                              <div 
-                                key={i}
-                                className="w-8 h-8 rounded-lg border border-white/20"
-                                style={{ backgroundColor: color }}
-                                title={color}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+              <div>
+                <label className="text-white/80 text-sm mb-1 block">Время суток</label>
+                <select 
+                  value={svgSceneSettings.timeOfDay}
+                  onChange={(e) => setSvgSceneSettings(prev => ({ ...prev, timeOfDay: e.target.value }))}
+                  className="w-full bg-white/5 border-white/10 text-white rounded-lg p-2.5"
+                >
+                  <option value="утро">🌅 Утро</option>
+                  <option value="день">☀️ День</option>
+                  <option value="вечер">🌇 Вечер</option>
+                  <option value="ночь">🌙 Ночь</option>
+                  <option value="рассвет">🌄 Рассвет</option>
+                  <option value="закат">🌅 Закат</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="text-white/80 text-sm mb-1 block">Настроение</label>
+                <select 
+                  value={svgSceneSettings.mood}
+                  onChange={(e) => setSvgSceneSettings(prev => ({ ...prev, mood: e.target.value }))}
+                  className="w-full bg-white/5 border-white/10 text-white rounded-lg p-2.5"
+                >
+                  <option value="спокойный">😌 Спокойный</option>
+                  <option value="радостный">😊 Радостный</option>
+                  <option value="таинственный">🔮 Таинственный</option>
+                  <option value="напряжённый">😰 Напряжённый</option>
+                  <option value="волшебный">✨ Волшебный</option>
+                  <option value="грустный">😢 Грустный</option>
+                </select>
+              </div>
+              
+              <div className="flex items-end">
+                <Button
+                  onClick={generateSvgScene}
+                  disabled={svgLoading}
+                  className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 h-[42px]"
+                >
+                  {svgLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Генерация 10 кадров...</>
+                  ) : (
+                    <><Sparkles className="w-4 h-4 mr-2" /> Создать раскадровку</>
+                  )}
+                </Button>
               </div>
             </div>
             
-            {/* Agent Details */}
+            {/* Агенты - статус */}
+            <div className="grid grid-cols-5 md:grid-cols-10 gap-2 mb-6">
+              {SVG_AGENTS.map((agent) => {
+                const agentStatus = svgAgents.find(a => a.id === agent.id);
+                const agentResult = svgResult?.agents?.[agent.id];
+                return (
+                  <div 
+                    key={agent.id} 
+                    className={`p-2 rounded-lg text-center transition-all ${
+                      agentResult?.success 
+                        ? 'bg-green-500/20 border border-green-500/30' 
+                        : agentStatus?.status === 'working'
+                        ? 'bg-yellow-500/20 border border-yellow-500/30'
+                        : 'bg-white/5 border border-white/10'
+                    }`}
+                  >
+                    <div className="text-2xl mb-1">{agent.icon}</div>
+                    <div className="text-[10px] text-white/70 truncate">{agent.name}</div>
+                    {agentResult?.executionTime && (
+                      <div className="text-[9px] text-white/40 mt-1">{agentResult.executionTime}мс</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* Раскадровка - 10 SVG кадров */}
+            {svgResult?.storyboard?.frames && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-lg font-bold text-white">🖼️ Раскадровка: {svgResult.storyboard.frames.length} кадров</h4>
+                  <div className="text-sm text-white/50">
+                    Время: {svgResult.executionTime}мс • Режим: {svgResult.mode === 'parallel' ? '⚡ Параллельный' : 'Последовательный'}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  {svgResult.storyboard.frames.map((frame: any, i: number) => (
+                    <Card key={frame.id} className="bg-white/5 border-white/10 overflow-hidden hover:border-purple-500/50 transition-colors">
+                      <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 px-3 py-2 flex items-center gap-2">
+                        <span className="text-lg">{frame.agentIcon}</span>
+                        <span className="text-sm text-white font-medium">{frame.agentName}</span>
+                        {frame.success && (
+                          <Badge variant="outline" className="ml-auto text-[10px] border-green-500/30 text-green-400">
+                            ✓ {frame.executionTime}мс
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="aspect-video bg-black/50 overflow-hidden">
+                        {frame.svg ? (
+                          <div 
+                            className="w-full h-full"
+                            dangerouslySetInnerHTML={{ __html: frame.svg }}
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-white/30">
+                            Ошибка генерации
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+                
+                {/* Статистика */}
+                <Card className="bg-white/5 border-white/10">
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-4 gap-4 text-center">
+                      <div>
+                        <div className="text-2xl font-bold text-white">{svgResult.storyboard.frames.filter((f: any) => f.success).length}</div>
+                        <div className="text-xs text-white/50">Успешно</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-white">{svgResult.executionTime}</div>
+                        <div className="text-xs text-white/50">Время (мс)</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-white">{Math.round(svgResult.executionTime / 10)}</div>
+                        <div className="text-xs text-white/50">Мс/кадр</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-white">{svgResult.metadata?.version || '4.3.0'}</div>
+                        <div className="text-xs text-white/50">Версия</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+            
+            {/* Пустое состояние */}
+            {!svgResult && !svgLoading && (
+              <Card className="bg-white/5 border-white/10 border-dashed">
+                <CardContent className="p-12 text-center">
+                  <div className="text-6xl mb-4">🎨</div>
+                  <h4 className="text-lg font-bold text-white mb-2">Нажмите "Создать раскадровку"</h4>
+                  <p className="text-white/50 text-sm mb-4">10 агентов параллельно сгенерируют SVG кадры</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {SVG_AGENTS.map(agent => (
+                      <span key={agent.id} className="text-2xl" title={agent.name}>{agent.icon}</span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Детали агентов */}
             <div className="mt-6">
-              <h4 className="text-lg font-bold text-white mb-4">📋 Детали агентов</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+              <h4 className="text-lg font-bold text-white mb-4">📋 Специализация агентов</h4>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {SVG_AGENTS.map((agent) => (
                   <div key={agent.id} className="bg-white/5 rounded-lg p-3 border border-white/10">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xl">{agent.icon}</span>
+                      <span className="text-2xl">{agent.icon}</span>
                       <span className="text-sm font-medium text-white">{agent.name}</span>
                     </div>
                     <p className="text-xs text-white/50">{agent.desc}</p>
-                    <div className="text-[10px] text-purple-400/70 mt-2 font-mono">{agent.api}</div>
                   </div>
                 ))}
               </div>
