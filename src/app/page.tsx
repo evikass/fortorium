@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Wand2, Film, Bot, Play, Image, Loader2, CheckCircle, Circle, Sparkles, RefreshCw, Users, Clock, MapPin, Music, Sun, Moon, CloudSun } from 'lucide-react';
+import { Wand2, Film, Bot, Play, Image, Loader2, CheckCircle, Circle, Sparkles, RefreshCw, Users, Clock, MapPin, Music, Sun, Moon, CloudSun, Download, Maximize2, Copy, ZoomIn, ZoomOut, FileImage } from 'lucide-react';
 import { initVersionSystem, CLIENT_VERSION, forceReload } from '@/lib/version';
 
 // Расширенные интерфейсы
@@ -158,6 +158,9 @@ export default function AnimationStudio() {
   const [svgResult, setSvgResult] = useState<SVGResult | null>(null);
   const [svgAgents, setSvgAgents] = useState<AgentStatus[]>([]);
   const [svgLogs, setSvgLogs] = useState<string[]>([]);
+  const [svgZoom, setSvgZoom] = useState(100);
+  const [selectedLayer, setSelectedLayer] = useState<number | null>(null);
+  const [fullscreenSvg, setFullscreenSvg] = useState<string | null>(null);
 
   useEffect(() => {
     const { needsReload, version } = initVersionSystem();
@@ -461,6 +464,59 @@ export default function AnimationStudio() {
     await generateSVG();
   };
 
+  // SVG Export Functions
+  const downloadSVG = (svgContent: string, filename: string) => {
+    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadPNG = async (svgContent: string, filename: string) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    const svgBlob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    
+    img.onload = () => {
+      canvas.width = img.width * 2;
+      canvas.height = img.height * 2;
+      ctx?.scale(2, 2);
+      ctx?.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      
+      const pngUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = pngUrl;
+      a.download = `${filename}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+    
+    img.src = url;
+  };
+
+  const copySVG = (svgContent: string) => {
+    navigator.clipboard.writeText(svgContent);
+  };
+
+  const downloadAllLayers = () => {
+    if (!svgResult) return;
+    svgResult.storyboard.frames.forEach((frame, i) => {
+      setTimeout(() => {
+        downloadSVG(frame.svg, `layer-${i + 1}-${frame.agentId}`);
+      }, i * 100);
+    });
+  };
+
   const regenerateImage = async (index: number) => {
     if (!script?.scenes[index]) return;
     
@@ -516,7 +572,7 @@ export default function AnimationStudio() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white tracking-wide">ФОРТОРИУМ</h1>
-              <p className="text-xs text-white/50">AI Анимационная Студия v4.7.0</p>
+              <p className="text-xs text-white/50">AI Анимационная Студия v4.8.0</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -1312,56 +1368,227 @@ export default function AnimationStudio() {
                     <Card className="bg-white/5 border-white/10">
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-white text-sm">Финальная сцена</CardTitle>
-                          <div className="flex gap-2">
+                          <CardTitle className="text-white text-sm">✨ Финальная сцена</CardTitle>
+                          <div className="flex gap-2 flex-wrap">
                             <Badge variant="outline" className="border-green-500/30 text-green-400 text-xs">
                               {svgResult.totalTime}мс
                             </Badge>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={regenerateSVG}
-                              className="border-white/20 text-white"
-                            >
-                              <RefreshCw className="w-3 h-3 mr-1" /> Пересоздать
-                            </Button>
+                            <Badge variant="outline" className="border-purple-500/30 text-purple-300 text-xs">
+                              {svgDimensions.width}×{svgDimensions.height}
+                            </Badge>
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="space-y-3">
+                        {/* Zoom Controls */}
+                        <div className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setSvgZoom(Math.max(25, svgZoom - 25))}
+                              className="text-white/60 hover:text-white h-8 w-8 p-0"
+                            >
+                              <ZoomOut className="w-4 h-4" />
+                            </Button>
+                            <span className="text-white/60 text-xs w-12 text-center">{svgZoom}%</span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setSvgZoom(Math.min(200, svgZoom + 25))}
+                              className="text-white/60 hover:text-white h-8 w-8 p-0"
+                            >
+                              <ZoomIn className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setFullscreenSvg(svgResult.finalScene.svg)}
+                              className="text-white/60 hover:text-white h-8 px-2"
+                            >
+                              <Maximize2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => copySVG(svgResult.finalScene.svg)}
+                              className="text-white/60 hover:text-white h-8 px-2"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => downloadSVG(svgResult.finalScene.svg, `fortorium-${svgTaskType}-final`)}
+                              className="text-white/60 hover:text-white h-8 px-2"
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => downloadPNG(svgResult.finalScene.svg, `fortorium-${svgTaskType}-final`)}
+                              className="text-white/60 hover:text-white h-8 px-2"
+                            >
+                              <FileImage className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        {/* SVG Preview */}
                         <div 
-                          className="bg-black/30 rounded-lg overflow-hidden"
-                          dangerouslySetInnerHTML={{ __html: svgResult.finalScene.svg }}
-                        />
+                          className="bg-black/30 rounded-lg overflow-auto flex items-center justify-center p-4"
+                          style={{ minHeight: '300px' }}
+                        >
+                          <div 
+                            style={{ transform: `scale(${svgZoom / 100})`, transformOrigin: 'center' }}
+                            dangerouslySetInnerHTML={{ __html: svgResult.finalScene.svg }}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Export Actions */}
+                    <Card className="bg-white/5 border-white/10">
+                      <CardContent className="py-4">
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          <Button
+                            onClick={() => downloadSVG(svgResult.finalScene.svg, `fortorium-${svgTaskType}`)}
+                            className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+                          >
+                            <Download className="w-4 h-4 mr-2" /> Скачать SVG
+                          </Button>
+                          <Button
+                            onClick={() => downloadPNG(svgResult.finalScene.svg, `fortorium-${svgTaskType}`)}
+                            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                          >
+                            <FileImage className="w-4 h-4 mr-2" /> Скачать PNG
+                          </Button>
+                          <Button
+                            onClick={() => copySVG(svgResult.finalScene.svg)}
+                            variant="outline"
+                            className="border-white/20 text-white"
+                          >
+                            <Copy className="w-4 h-4 mr-2" /> Копировать SVG
+                          </Button>
+                          <Button
+                            onClick={downloadAllLayers}
+                            variant="outline"
+                            className="border-white/20 text-white"
+                          >
+                            <Download className="w-4 h-4 mr-2" /> Все слои (11 SVG)
+                          </Button>
+                          <Button
+                            onClick={regenerateSVG}
+                            variant="outline"
+                            className="border-purple-500/30 text-purple-300"
+                          >
+                            <RefreshCw className="w-4 h-4 mr-2" /> Пересоздать
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
 
                     {/* Storyboard Grid */}
                     <Card className="bg-white/5 border-white/10">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-white text-sm">
-                          Раскадровка ({svgResult.storyboard.frames.length} слоёв)
-                        </CardTitle>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-white text-sm">
+                            🎬 Раскадровка ({svgResult.storyboard.frames.length} слоёв)
+                          </CardTitle>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSelectedLayer(null)}
+                            className="text-white/60"
+                          >
+                            Показать все
+                          </Button>
+                        </div>
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                           {svgResult.storyboard.frames.map((frame) => (
-                            <div key={frame.id} className="bg-black/30 rounded-lg overflow-hidden border border-white/10">
+                            <div 
+                              key={frame.id} 
+                              className={`bg-black/30 rounded-lg overflow-hidden border cursor-pointer transition-all hover:border-purple-500/50 ${
+                                selectedLayer === frame.id ? 'border-purple-500 ring-2 ring-purple-500/30' : 'border-white/10'
+                              }`}
+                              onClick={() => setSelectedLayer(selectedLayer === frame.id ? null : frame.id)}
+                            >
                               <div 
                                 className="aspect-video"
                                 dangerouslySetInnerHTML={{ __html: frame.svg }}
                               />
                               <div className="p-2 flex items-center gap-2">
                                 <span>{frame.agentIcon}</span>
-                                <span className="text-white/60 text-xs truncate">{frame.agentName}</span>
-                                {frame.success && <CheckCircle className="w-3 h-3 text-green-400 ml-auto" />}
+                                <span className="text-white/60 text-xs truncate flex-1">{frame.agentName}</span>
+                                {frame.success && <CheckCircle className="w-3 h-3 text-green-400 flex-shrink-0" />}
                               </div>
+                              {selectedLayer === frame.id && (
+                                <div className="p-2 border-t border-white/10 flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => { e.stopPropagation(); downloadSVG(frame.svg, `layer-${frame.agentId}`); }}
+                                    className="text-white/60 hover:text-white h-7 px-2 text-xs"
+                                  >
+                                    <Download className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => { e.stopPropagation(); setFullscreenSvg(frame.svg); }}
+                                    className="text-white/60 hover:text-white h-7 px-2 text-xs"
+                                  >
+                                    <Maximize2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
                       </CardContent>
                     </Card>
                   </>
+                )}
+
+                {/* Fullscreen Modal */}
+                {fullscreenSvg && (
+                  <div 
+                    className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+                    onClick={() => setFullscreenSvg(null)}
+                  >
+                    <button
+                      onClick={() => setFullscreenSvg(null)}
+                      className="absolute top-4 right-4 text-white/60 hover:text-white bg-white/10 rounded-full p-2"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                    <div 
+                      className="max-w-full max-h-full overflow-auto"
+                      onClick={(e) => e.stopPropagation()}
+                      dangerouslySetInnerHTML={{ __html: fullscreenSvg }}
+                    />
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                      <Button
+                        onClick={() => downloadSVG(fullscreenSvg, 'fortorium-fullscreen')}
+                        className="bg-white/20 backdrop-blur"
+                      >
+                        <Download className="w-4 h-4 mr-2" /> Скачать SVG
+                      </Button>
+                      <Button
+                        onClick={() => downloadPNG(fullscreenSvg, 'fortorium-fullscreen')}
+                        className="bg-white/20 backdrop-blur"
+                      >
+                        <FileImage className="w-4 h-4 mr-2" /> Скачать PNG
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
