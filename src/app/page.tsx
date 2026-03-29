@@ -103,15 +103,15 @@ interface AgentStatus {
   message: string;
 }
 
-// Все агенты студии
+// Все агенты студии - функциональные
 const ALL_AGENTS = [
-  { id: 'producer', name: 'Продюсер', icon: '🤖', color: 'bg-purple-500', desc: 'Координирует весь процесс' },
-  { id: 'writer', name: 'Сценарист', icon: '📝', color: 'bg-blue-500', desc: 'Пишет сценарии и диалоги' },
-  { id: 'artist', name: 'Художник', icon: '🎨', color: 'bg-pink-500', desc: 'Создаёт раскадровки' },
-  { id: 'animator', name: 'Аниматор', icon: '🎬', color: 'bg-orange-500', desc: 'Оживляет кадры' },
-  { id: 'voice', name: 'Озвучка', icon: '🎤', color: 'bg-green-500', desc: 'Генерирует голоса' },
-  { id: 'editor', name: 'Монтажёр', icon: '✂️', color: 'bg-red-500', desc: 'Собирает ролик' },
-  { id: 'blender', name: 'Blender', icon: '💻', color: 'bg-cyan-500', desc: '3D сцены' },
+  { id: 'producer', name: 'Продюсер', icon: '🤖', color: 'bg-purple-500', desc: 'Координирует весь процесс', api: '/api/agents/producer' },
+  { id: 'writer', name: 'Сценарист', icon: '📝', color: 'bg-blue-500', desc: 'Пишет сценарии и диалоги', api: '/api/agents/writer' },
+  { id: 'artist', name: 'Художник', icon: '🎨', color: 'bg-pink-500', desc: 'Создаёт раскадровки', api: '/api/agents/artist' },
+  { id: 'animator', name: 'Аниматор', icon: '🎬', color: 'bg-orange-500', desc: 'Оживляет кадры', api: '/api/agents/animator' },
+  { id: 'voice', name: 'Озвучка', icon: '🎤', color: 'bg-green-500', desc: 'Генерирует голоса', api: '/api/agents/voice' },
+  { id: 'editor', name: 'Монтажёр', icon: '✂️', color: 'bg-red-500', desc: 'Собирает ролик', api: '/api/agents/editor' },
+  { id: 'blender', name: 'Blender', icon: '💻', color: 'bg-cyan-500', desc: '3D сцены', api: '/api/blender' },
 ];
 
 export default function AnimationStudio() {
@@ -129,11 +129,14 @@ export default function AnimationStudio() {
   const [activeResultTab, setActiveResultTab] = useState<'overview' | 'scenes' | 'characters'>('overview');
   
   const [agents, setAgents] = useState<AgentStatus[]>([
+    { id: 'producer', name: 'Продюсер', icon: '🤖', color: 'bg-purple-500', status: 'waiting', progress: 0, message: 'Готов к работе' },
     { id: 'writer', name: 'Сценарист', icon: '📝', color: 'bg-blue-500', status: 'waiting', progress: 0, message: 'Ожидает задачу' },
     { id: 'artist', name: 'Художник', icon: '🎨', color: 'bg-pink-500', status: 'waiting', progress: 0, message: 'Ожидает сценарий' },
     { id: 'animator', name: 'Аниматор', icon: '🎬', color: 'bg-orange-500', status: 'waiting', progress: 0, message: 'Ожидает раскадровку' },
     { id: 'voice', name: 'Озвучка', icon: '🎤', color: 'bg-green-500', status: 'waiting', progress: 0, message: 'Ожидает анимацию' },
+    { id: 'editor', name: 'Монтажёр', icon: '✂️', color: 'bg-red-500', status: 'waiting', progress: 0, message: 'Ожидает материалы' },
   ]);
+  const [productionPlan, setProductionPlan] = useState<any>(null);
 
   useEffect(() => {
     const { needsReload, version } = initVersionSystem();
@@ -173,39 +176,50 @@ export default function AnimationStudio() {
     setIsLoading(true);
     setScript(null);
     setLogs([]);
-    setAgents(prev => prev.map(a => ({ ...a, status: 'waiting', progress: 0, message: a.id === 'writer' ? 'Начинаю работу...' : 'Ожидает' })));
+    setProductionPlan(null);
+    setAgents(prev => prev.map(a => ({ ...a, status: 'waiting', progress: 0, message: 'Ожидает' })));
 
     try {
-      setCurrentPhase('Генерация сценария...');
-      addLog('📝 Запрос на генерацию сценария...');
+      // ===== ФАЗА 1: Продюсер создаёт план =====
+      setCurrentPhase('🤖 Продюсер анализирует проект...');
+      addLog('🤖 Продюсер начинает анализ идеи...');
+      updateAgent('producer', { status: 'working', progress: 10, message: 'Анализирую идею...' });
+      
+      const producerRes = await fetch('/api/agents/producer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: projectName, idea: projectIdea, style, genre, duration })
+      });
+      
+      const producerData = await producerRes.json();
+      if (producerData.success) {
+        setProductionPlan(producerData.plan);
+        addLog(`✅ План производства создан`);
+        addLog(`   📋 Фаз: ${producerData.plan?.productionPlan?.phases?.length || 0}`);
+        updateAgent('producer', { status: 'done', progress: 100, message: 'План готов!' });
+      }
+
+      // ===== ФАЗА 2: Сценарист создаёт сценарий =====
+      setCurrentPhase('📝 Сценарист пишет сценарий...');
+      addLog('📝 Сценарист начинает работу...');
       updateAgent('writer', { status: 'working', progress: 10, message: 'Анализирую идею...' });
       
-      const scriptRes = await fetch('/api/work', {
+      const writerRes = await fetch('/api/agents/writer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          agentId: 'writer-1',
-          agentRole: 'writer',
-          taskType: 'generate_script',
-          input: {
-            title: projectName,
-            idea: projectIdea,
-            style: style,
-            genre: genre,
-            duration: duration,
-            targetAudience: 'семейный просмотр'
-          },
-          projectContext: { style, genre }
+          action: 'generate_script',
+          input: { title: projectName, idea: projectIdea, style, genre, duration }
         })
       });
       
       updateAgent('writer', { progress: 50, message: 'Создаю персонажей...' });
       
-      const scriptData = await scriptRes.json();
-      addLog(`📄 Ответ получен: success=${scriptData.success}`);
+      const writerData = await writerRes.json();
+      addLog(`📄 Ответ сценариста: success=${writerData.success}`);
       
-      if (scriptData.success && scriptData.output?.script) {
-        const generatedScript: Script = scriptData.output.script;
+      if (writerData.success && writerData.script) {
+        const generatedScript: Script = writerData.script;
         addLog(`✅ Сценарий создан!`);
         addLog(`   📊 Сцен: ${generatedScript.scenes?.length || 0}`);
         addLog(`   👥 Персонажей: ${generatedScript.characters?.length || 0}`);
@@ -215,13 +229,95 @@ export default function AnimationStudio() {
         updateAgent('writer', { status: 'done', progress: 100, message: 'Сценарий готов!' });
         setScript(generatedScript);
         
-        setCurrentPhase('Генерация изображений...');
-        addLog('🎨 Начинаю генерацию раскадровки...');
-        updateAgent('artist', { status: 'working', progress: 5, message: 'Создаю раскадровку...' });
+        // ===== ФАЗА 3: Художник создаёт раскадровку =====
+        setCurrentPhase('🎨 Художник создаёт раскадровку...');
+        addLog('🎨 Художник начинает генерацию изображений...');
+        updateAgent('artist', { status: 'working', progress: 5, message: 'Генерирую раскадровку...' });
         
-        generateSceneImages(generatedScript);
+        // Используем функциональный API художника
+        const artistRes = await fetch('/api/agents/artist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'generate_storyboard',
+            input: { scenes: generatedScript.scenes, style, title: projectName }
+          })
+        });
+        
+        const artistData = await artistRes.json();
+        addLog(`🎨 Художник: ${artistData.message}`);
+        
+        // Обновляем изображения в сценарии
+        if (artistData.success && artistData.storyboard) {
+          generatedScript.scenes = generatedScript.scenes.map((scene, i) => ({
+            ...scene,
+            image: artistData.storyboard[i]?.imageUrl,
+            imageLoading: false
+          }));
+          setScript({...generatedScript});
+        }
+        
+        updateAgent('artist', { status: 'done', progress: 100, message: `Готово: ${artistData.readyFrames}/${artistData.totalFrames} кадров` });
+        
+        // ===== ФАЗА 4: Аниматор настраивает анимацию =====
+        setCurrentPhase('🎬 Аниматор настраивает анимацию...');
+        addLog('🎬 Аниматор создаёт планы анимации...');
+        updateAgent('animator', { status: 'working', progress: 20, message: 'Настраиваю анимацию...' });
+        
+        const animatorRes = await fetch('/api/agents/animator', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'animate_scene',
+            input: { scene: generatedScript.scenes[0], style, duration: generatedScript.scenes[0]?.duration || 15 }
+          })
+        });
+        
+        const animatorData = await animatorRes.json();
+        addLog(`🎬 Аниматор: ${animatorData.message}`);
+        updateAgent('animator', { status: 'done', progress: 100, message: 'План анимации готов!' });
+        
+        // ===== ФАЗА 5: Озвучка генерирует звук =====
+        setCurrentPhase('🎤 Озвучка работает над звуком...');
+        addLog('🎤 Озвучка создаёт аудио-план...');
+        updateAgent('voice', { status: 'working', progress: 20, message: 'Готовлю озвучку...' });
+        
+        const voiceRes = await fetch('/api/agents/voice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'create_soundtrack',
+            input: { scenes: generatedScript.scenes, style, totalDuration: generatedScript.totalDuration }
+          })
+        });
+        
+        const voiceData = await voiceRes.json();
+        addLog(`🎤 Озвучка: ${voiceData.message}`);
+        updateAgent('voice', { status: 'done', progress: 100, message: 'Саундтрек готов!' });
+        
+        // ===== ФАЗА 6: Монтажёр собирает проект =====
+        setCurrentPhase('✂️ Монтажёр собирает проект...');
+        addLog('✂️ Монтажёр финализирует проект...');
+        updateAgent('editor', { status: 'working', progress: 20, message: 'Собираю проект...' });
+        
+        const editorRes = await fetch('/api/agents/editor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'create_final_cut',
+            input: { project: generatedScript, title: projectName, style }
+          })
+        });
+        
+        const editorData = await editorRes.json();
+        addLog(`✂️ Монтажёр: ${editorData.message}`);
+        updateAgent('editor', { status: 'done', progress: 100, message: 'Проект собран!' });
+        
+        setCurrentPhase('🎉 Проект готов!');
+        addLog('🎉 Все агенты завершили работу!');
+        
       } else {
-        addLog(`❌ Ошибка: ${scriptData.error || 'Не удалось создать сценарий'}`);
+        addLog(`❌ Ошибка: ${writerData.error || 'Не удалось создать сценарий'}`);
         setCurrentPhase('Ошибка генерации');
       }
     } catch (error: any) {
@@ -366,7 +462,7 @@ export default function AnimationStudio() {
               🪄
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">AI Animation Studio</h1>
+              <h1 className="text-lg font-bold text-white">ФОРТОРИУМ <span className="text-purple-300">|</span> AI Animation Studio</h1>
               <p className="text-xs text-white/50">Мультиагентная анимационная студия v{CLIENT_VERSION}</p>
             </div>
           </div>
@@ -399,7 +495,7 @@ export default function AnimationStudio() {
         {/* Hero Section */}
         <section className="text-center py-8 mb-6">
           <h2 className="text-4xl font-bold mb-3 bg-gradient-to-r from-white via-purple-400 to-pink-400 bg-clip-text text-transparent">
-            Создавайте мультфильмы с помощью ИИ
+            ФОРТОРИУМ — Создавайте мультфильмы с помощью ИИ
           </h2>
           <p className="text-lg text-white/60 max-w-2xl mx-auto mb-4">
             Полностью автономная студия: от идеи до готового ролика. 7 ИИ-агентов работают вместе без участия людей.
@@ -617,12 +713,14 @@ export default function AnimationStudio() {
         {/* Agents Tab */}
         {activeMainTab === 'agents' && (
           <div>
-            <h3 className="text-xl font-bold text-white mb-1">ИИ-Агенты студии</h3>
-            <p className="text-white/50 mb-6">7 специализированных агентов работают вместе автономно</p>
+            <h3 className="text-xl font-bold text-white mb-1">ИИ-Агенты студии ФОРТОРИУМ</h3>
+            <p className="text-white/50 mb-6">7 специализированных агентов работают вместе автономно. Каждый агент имеет свой API.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ALL_AGENTS.map((agent) => (
-                <Card key={agent.id} className="bg-white/5 border-white/10">
+              {ALL_AGENTS.map((agent) => {
+                const agentStatus = agents.find(a => a.id === agent.id);
+                return (
+                <Card key={agent.id} className="bg-white/5 border-white/10 hover:border-purple-500/50 transition-colors">
                   <CardHeader className="pb-2">
                     <div className="flex items-center gap-3">
                       <div className={`w-12 h-12 rounded-xl ${agent.color} flex items-center justify-center text-2xl`}>
@@ -630,14 +728,28 @@ export default function AnimationStudio() {
                       </div>
                       <div>
                         <CardTitle className="text-white text-lg">{agent.name}</CardTitle>
-                        <Badge variant="outline" className="border-green-500/30 text-green-400 text-xs">
-                          Активен
-                        </Badge>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className={`text-xs ${
+                            agentStatus?.status === 'done' ? 'border-green-500/30 text-green-400' :
+                            agentStatus?.status === 'working' ? 'border-yellow-500/30 text-yellow-400' :
+                            'border-blue-500/30 text-blue-400'
+                          }`}>
+                            {agentStatus?.status === 'done' ? 'Готов' :
+                             agentStatus?.status === 'working' ? 'Работает...' : 'Активен'}
+                          </Badge>
+                          <span className="text-[10px] text-white/30 font-mono">{agent.api}</span>
+                        </div>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-white/60 text-sm mb-3">{agent.desc}</p>
+                    {agentStatus?.status === 'working' && (
+                      <div className="mb-3">
+                        <div className="text-xs text-purple-300 mb-1">{agentStatus.message}</div>
+                        <Progress value={agentStatus.progress} className="h-1" />
+                      </div>
+                    )}
                     <div className="pt-3 border-t border-white/10">
                       <div className="text-xs text-white/50 mb-2">Возможности:</div>
                       <ul className="text-xs text-white/70 space-y-1">
@@ -701,7 +813,8 @@ export default function AnimationStudio() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -1012,7 +1125,7 @@ export default function AnimationStudio() {
 
       {/* Footer */}
       <footer className="text-center py-6 text-white/40 text-sm">
-        AI Animation Studio © 2024 — Мультиагентная анимационная студия
+        ФОРТОРИУМ — AI Animation Studio © 2024 — Мультиагентная анимационная студия
       </footer>
     </div>
   );
