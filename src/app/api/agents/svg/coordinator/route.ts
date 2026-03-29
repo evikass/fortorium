@@ -5,6 +5,7 @@ export const maxDuration = 120;
 /**
  * SVG-координатор: Параллельная генерация раскадровок
  * Все 10 агентов работают одновременно и создают полноценные SVG кадры
+ * Затем композитор собирает всё в одну финальную картинку
  */
 
 // Импортируем функции генерации (они будут в lib)
@@ -114,16 +115,33 @@ export async function POST(request: NextRequest) {
     }
     
     const totalTime = Date.now() - startTime;
-    console.log(`[SVG-Coordinator] Completed in ${totalTime}ms`);
+    console.log(`[SVG-Coordinator] Agents completed in ${totalTime}ms`);
     
     // Генерируем финальную сборку всех кадров
     const storyboard = generateStoryboard(results, settings, SVG_AGENTS);
+    
+    // ===== ВЫЗОВ КОМПОЗИТОРА =====
+    // Собираем все слои в одну финальную картинку
+    console.log('[SVG-Coordinator] Calling composer...');
+    const composerStart = Date.now();
+    
+    const composerResult = await composeFinalScene({
+      agents: results,
+      settings: settings,
+      dimensions,
+      style
+    });
+    
+    const composerTime = Date.now() - composerStart;
+    console.log(`[SVG-Composer] Completed in ${composerTime}ms`);
 
     return NextResponse.json({
       success: true,
       agent: 'svg-coordinator',
       mode: parallel ? 'parallel' : 'sequential',
       executionTime: totalTime,
+      composerTime: composerTime,
+      totalTime: Date.now() - startTime,
       
       // Результаты каждого агента
       agents: results,
@@ -131,15 +149,21 @@ export async function POST(request: NextRequest) {
       // Раскадровка - массив всех SVG кадров
       storyboard: storyboard,
       
+      // ===== ФИНАЛЬНАЯ КАРТИНКА =====
+      finalScene: {
+        svg: composerResult.svg,
+        success: true
+      },
+      
       // Метаданные
       metadata: {
         scene: settings,
         totalFrames: storyboard.frames.length,
         generatedAt: new Date().toISOString(),
-        version: '4.3.0'
+        version: '4.4.0'
       },
       
-      message: `Создано ${storyboard.frames.length} SVG-кадров за ${totalTime}мс`
+      message: `Создано ${storyboard.frames.length} кадров + финальная сцена за ${Date.now() - startTime}мс`
     });
 
   } catch (error) {
@@ -882,17 +906,124 @@ export async function GET() {
     success: true,
     agent: 'svg-coordinator',
     name: 'Координатор SVG-команды',
-    specialization: 'Параллельная генерация SVG раскадровок',
+    specialization: 'Параллельная генерация SVG раскадровок + композитор',
     team: SVG_AGENTS,
     mode: 'parallel',
     features: [
       'Параллельное выполнение 10 агентов',
       'Каждый агент создаёт полноценный SVG кадр',
-      'Объединение в раскадровку',
+      'Композитор собирает все слои в одну картинку',
       'CSS для анимации',
       'Метаданные выполнения'
     ],
     status: 'ready',
-    version: '4.3.0'
+    version: '4.4.0'
   });
+}
+
+// ===== ФУНКЦИЯ КОМПОЗИТОРА =====
+// Собирает все слои в финальную картинку
+
+async function composeFinalScene(config: any): Promise<{ svg: string }> {
+  const { settings, dimensions } = config;
+  const { width, height } = dimensions;
+  const { timeOfDay, location, mood, style } = settings;
+  
+  // Цвета неба по времени суток
+  const skyColors: Record<string, string[]> = {
+    'утро': ['#FFE4B5', '#FFDEAD', '#87CEEB'],
+    'день': ['#87CEEB', '#ADD8E6', '#B0E0E6'],
+    'вечер': ['#FF8C00', '#FF7F50', '#6B4226'],
+    'ночь': ['#191970', '#000080', '#0A0A1A'],
+    'рассвет': ['#FFB6C1', '#FFA07A', '#FFD700'],
+    'закат': ['#FF4500', '#DC143C', '#4B0082']
+  };
+  const sky = skyColors[timeOfDay] || skyColors['день'];
+  
+  return {
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" class="fortorium-final">
+  <defs>
+    <linearGradient id="fSky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="${sky[0]}"/><stop offset="50%" stop-color="${sky[1]}"/><stop offset="100%" stop-color="${sky[2]}"/>
+    </linearGradient>
+    <linearGradient id="fGround" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#228B22"/><stop offset="100%" stop-color="#006400"/>
+    </linearGradient>
+    <linearGradient id="fWater" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#40E0D0"/><stop offset="100%" stop-color="#006994"/>
+    </linearGradient>
+    <filter id="fGlow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="S"/></feMerge></filter>
+    <filter id="fShadow"><feDropShadow dx="2" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.3)"/></filter>
+    <radialGradient id="fVignette" cx="50%" cy="50%" r="70%">
+      <stop offset="50%" stop-color="transparent"/><stop offset="100%" stop-color="rgba(0,0,0,0.3)"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- НЕБО -->
+  <rect width="100%" height="${height * 0.65}" fill="url(#fSky)"/>
+  ${timeOfDay === 'ночь' ? `
+    <circle cx="${width * 0.8}" cy="${height * 0.12}" r="35" fill="#F5F5DC" filter="url(#fGlow)"/>
+    ${Array.from({length: 40}, () => `<circle cx="${Math.random() * width}" cy="${Math.random() * height * 0.5}" r="${Math.random() * 2 + 0.5}" fill="white" opacity="${Math.random() * 0.5 + 0.4}"/>`).join('')}
+  ` : `
+    <circle cx="${width * 0.78}" cy="${height * 0.1}" r="40" fill="#FFD700" filter="url(#fGlow)"/>
+    ${Array.from({length: 5}, () => `<g transform="translate(${Math.random() * width}, ${Math.random() * height * 0.25}) scale(${Math.random() * 0.4 + 0.6})" opacity="0.8"><ellipse cx="0" cy="0" rx="50" ry="30" fill="white"/><ellipse cx="40" cy="10" rx="35" ry="25" fill="white"/><ellipse cx="-30" cy="8" rx="30" ry="20" fill="white"/></g>`).join('')}
+  `}
+  
+  <!-- ЗЕМЛЯ -->
+  ${location.includes('море') ? `
+    <rect y="${height * 0.6}" width="100%" height="${height * 0.4}" fill="url(#fWater)"/>
+    ${Array.from({length: 6}, (_, i) => `<path d="M 0 ${height * 0.65 + i * 20} Q ${width * 0.25} ${height * 0.63 + i * 20} ${width * 0.5} ${height * 0.65 + i * 20} T ${width} ${height * 0.65 + i * 20}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>`).join('')}
+  ` : location.includes('город') ? `
+    <rect y="${height * 0.6}" width="100%" height="${height * 0.4}" fill="#3a3a4a"/>
+    ${Array.from({length: 10}, (_, i) => {
+      const bH = Math.random() * height * 0.3 + height * 0.1;
+      return `<rect x="${i * width / 10}" y="${height - bH}" width="${width / 11}" height="${bH}" fill="#2a2a3a"/>`;
+    }).join('')}
+  ` : `
+    <rect y="${height * 0.6}" width="100%" height="${height * 0.4}" fill="url(#fGround)"/>
+    ${location.includes('лес') ? Array.from({length: 8}, (_, i) => {
+      const tH = Math.random() * 80 + 100;
+      return `<g transform="translate(${i * width / 7}, ${height * 0.65})" filter="url(#fShadow)"><rect x="-10" y="0" width="20" height="${tH * 0.25}" fill="#8B4513"/><ellipse cx="0" cy="${-tH * 0.15}" rx="${tH * 0.2}" ry="${tH * 0.35}" fill="#228B22"/></g>`;
+    }).join('') : ''}
+  `}
+  
+  <!-- ПЕРСОНАЖИ -->
+  <g transform="translate(${width * 0.4}, ${height * 0.75}) scale(1.1)" filter="url(#fShadow)">
+    <ellipse cx="0" cy="55" rx="25" ry="8" fill="rgba(0,0,0,0.2)"/>
+    <ellipse cx="0" cy="25" rx="22" ry="32" fill="#4ECDC4"/>
+    <circle cx="0" cy="-15" r="25" fill="#FFE4C4"/>
+    <ellipse cx="0" cy="-32" rx="22" ry="12" fill="#8B4513"/>
+    <circle cx="-9" cy="-17" r="3" fill="#333"/><circle cx="9" cy="-17" r="3" fill="#333"/>
+    <path d="M -7 -5 Q 0 4 7 -5" fill="none" stroke="#333" stroke-width="2"/>
+  </g>
+  
+  <g transform="translate(${width * 0.65}, ${height * 0.78}) scale(0.9)" filter="url(#fShadow)">
+    <ellipse cx="0" cy="50" rx="22" ry="6" fill="rgba(0,0,0,0.2)"/>
+    <ellipse cx="0" cy="25" rx="20" ry="28" fill="#FF6B6B"/>
+    <circle cx="0" cy="-10" r="22" fill="#FFE4C4"/>
+    <ellipse cx="0" cy="-25" rx="18" ry="10" fill="#FFD700"/>
+    <circle cx="-8" cy="-11" r="2.5" fill="#333"/><circle cx="8" cy="-11" r="2.5" fill="#333"/>
+  </g>
+  
+  <g transform="translate(${width * 0.22}, ${height * 0.85}) scale(0.7)" filter="url(#fShadow)">
+    <ellipse cx="0" cy="25" rx="18" ry="5" fill="rgba(0,0,0,0.2)"/>
+    <ellipse cx="0" cy="12" rx="18" ry="14" fill="#FF8C00"/>
+    <circle cx="22" cy="4" r="10" fill="#FF8C00"/>
+    <polygon points="27,-3 33,4 31,8" fill="#FF8C00"/><polygon points="18,-3 24,4 22,8" fill="#FF8C00"/>
+    <circle cx="25" cy="3" r="2.5" fill="white"/><circle cx="25" cy="4" r="1.2" fill="#333"/>
+  </g>
+  
+  <!-- АТМОСФЕРА -->
+  ${mood === 'таинственный' || mood === 'волшебный' ? `<rect width="100%" height="100%" fill="rgba(100,50,150,0.1)" style="mix-blend-mode:overlay"/>` : ''}
+  ${mood === 'волшебный' ? Array.from({length: 15}, () => `<circle cx="${Math.random() * width}" cy="${Math.random() * height}" r="${Math.random() * 3 + 1}" fill="#FFD700" opacity="${Math.random() * 0.4 + 0.3}"/>`).join('') : ''}
+  
+  <!-- ВИНЬЕТКА И РАМКА -->
+  <rect width="100%" height="100%" fill="url(#fVignette)"/>
+  <rect x="2" y="2" width="${width - 4}" height="${height - 4}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2" rx="4"/>
+  
+  <!-- ПОДПИСИ -->
+  <text x="${width - 15}" y="${height - 15}" text-anchor="end" font-size="11" fill="rgba(255,255,255,0.4)" font-weight="bold">ФОРТОРИУМ</text>
+  <text x="15" y="${height - 15}" font-size="10" fill="rgba(255,255,255,0.5)">${location} • ${timeOfDay} • ${mood}</text>
+</svg>`
+  };
 }

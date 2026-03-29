@@ -896,10 +896,35 @@ export default function AnimationStudio() {
             {/* Раскадровка - 10 SVG кадров */}
             {svgResult?.storyboard?.frames && (
               <div className="space-y-4">
+                
+                {/* ===== ФИНАЛЬНАЯ КАРТИНКА ===== */}
+                {svgResult?.finalScene?.svg && (
+                  <Card className="bg-white/5 border-2 border-green-500/30 overflow-hidden">
+                    <div className="bg-gradient-to-r from-green-900/50 to-emerald-900/50 px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">🖼️</span>
+                        <div>
+                          <div className="text-lg font-bold text-white">Финальная картинка</div>
+                          <div className="text-xs text-white/60">Собрана композитором из всех слоёв</div>
+                        </div>
+                      </div>
+                      <Badge className="bg-green-500/20 border-green-500/30 text-green-400">
+                        ✓ Готово
+                      </Badge>
+                    </div>
+                    <div className="aspect-video bg-black/30 overflow-hidden">
+                      <div 
+                        className="w-full h-full"
+                        dangerouslySetInnerHTML={{ __html: svgResult.finalScene.svg }}
+                      />
+                    </div>
+                  </Card>
+                )}
+                
                 <div className="flex items-center justify-between">
-                  <h4 className="text-lg font-bold text-white">🖼️ Раскадровка: {svgResult.storyboard.frames.length} кадров</h4>
+                  <h4 className="text-lg font-bold text-white">📋 Раскадровка: {svgResult.storyboard.frames.length} кадров</h4>
                   <div className="text-sm text-white/50">
-                    Время: {svgResult.executionTime}мс • Режим: {svgResult.mode === 'parallel' ? '⚡ Параллельный' : 'Последовательный'}
+                    Агенты: {svgResult.executionTime}мс • Композитор: {svgResult.composerTime}мс • Всего: {svgResult.totalTime}мс
                   </div>
                 </div>
                 
@@ -934,21 +959,25 @@ export default function AnimationStudio() {
                 {/* Статистика */}
                 <Card className="bg-white/5 border-white/10">
                   <CardContent className="p-4">
-                    <div className="grid grid-cols-4 gap-4 text-center">
+                    <div className="grid grid-cols-5 gap-4 text-center">
                       <div>
                         <div className="text-2xl font-bold text-white">{svgResult.storyboard.frames.filter((f: any) => f.success).length}</div>
-                        <div className="text-xs text-white/50">Успешно</div>
+                        <div className="text-xs text-white/50">Агентов</div>
                       </div>
                       <div>
                         <div className="text-2xl font-bold text-white">{svgResult.executionTime}</div>
-                        <div className="text-xs text-white/50">Время (мс)</div>
+                        <div className="text-xs text-white/50">Агенты (мс)</div>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-white">{Math.round(svgResult.executionTime / 10)}</div>
-                        <div className="text-xs text-white/50">Мс/кадр</div>
+                        <div className="text-2xl font-bold text-green-400">{svgResult.composerTime}</div>
+                        <div className="text-xs text-white/50">Композитор (мс)</div>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-white">{svgResult.metadata?.version || '4.3.0'}</div>
+                        <div className="text-2xl font-bold text-purple-400">{svgResult.totalTime}</div>
+                        <div className="text-xs text-white/50">Всего (мс)</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-white">{svgResult.metadata?.version || '4.4.0'}</div>
                         <div className="text-xs text-white/50">Версия</div>
                       </div>
                     </div>
