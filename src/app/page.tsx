@@ -13,7 +13,7 @@ import {
   Mic, Scissors, Monitor
 } from 'lucide-react';
 import { initVersionSystem, CLIENT_VERSION, forceReload } from '@/lib/version';
-import LoopStudio from '@/components/loop/LoopStudio';
+import LoopStudio, { SceneLoopRequest } from '@/components/loop/LoopStudio';
 
 // Интерфейсы
 interface Character {
@@ -54,6 +54,7 @@ interface Scene {
   image?: string;
   imageLoading?: boolean;
   imageError?: boolean;
+  improvedByLoop?: boolean; // v5.1: сцена доработана луп-циклом
 }
 
 interface Act {
@@ -138,6 +139,9 @@ export default function AnimationStudio() {
     { id: 'editor', name: 'Монтажёр', icon: '✂️', color: 'bg-red-500', status: 'waiting', progress: 0, message: 'Ожидает материалы' },
   ]);
   const [productionPlan, setProductionPlan] = useState<any>(null);
+
+  // v5.1: связка демо-режима с луп-циклом — запрос на прогон сцены через цикл
+  const [loopSceneRequest, setLoopSceneRequest] = useState<SceneLoopRequest | null>(null);
   
   // SVG Team State
   const [svgAgents, setSvgAgents] = useState<AgentStatus[]>([
@@ -253,6 +257,41 @@ export default function AnimationStudio() {
     if (timeOfDay.includes('ночь') || timeOfDay.includes('night')) return <Moon className="w-4 h-4" />;
     if (timeOfDay.includes('вечер') || timeOfDay.includes('evening')) return <CloudSun className="w-4 h-4" />;
     return <Sun className="w-4 h-4" />;
+  };
+
+  // ===== v5.1: связка демо-режима с луп-инженерингом =====
+  // Из сцены собирается запрос: цель + стартовый текст (initialDraft) + обратная запись результата
+  const buildSceneLoopRequest = (scene: Scene, index: number, mode: 'single' | 'meta'): SceneLoopRequest => {
+    const sceneNumber = scene.number || index + 1;
+    const dialogueText = (scene.dialogue || []).map(d => `${d.character}: «${d.line}»`).join(' ');
+    const initialDraft = [
+      `Локация: ${scene.location}${scene.timeOfDay ? `, ${scene.timeOfDay}` : ''}.`,
+      `Действие: ${scene.action || scene.description}`,
+      scene.mood ? `Настроение: ${scene.mood}.` : '',
+      dialogueText ? `Диалог: ${dialogueText}` : '',
+    ].filter(Boolean).join('\n');
+
+    return {
+      mode,
+      sceneNumber,
+      sceneTitle: scene.title,
+      goal:
+        mode === 'single'
+          ? `Улучшить сцену «${scene.title}» (${scene.location}): конкретнее действие, ярче атмосфера и эмоциональный бит, живее диалог`
+          : `Развернуть сцену «${scene.title}» (${scene.location}) в последовательность микросцен с полной драматургической дугой: завязка, развитие, кульминация, развязка`,
+      initialDraft,
+      applyDraft: (draft: string) => {
+        setScript(prev => {
+          if (!prev) return prev;
+          const newScenes = [...prev.scenes];
+          newScenes[index] = { ...newScenes[index], description: draft, improvedByLoop: true };
+          return { ...prev, scenes: newScenes };
+        });
+        addLog(`♾️ Сцена ${sceneNumber} обновлена результатом лупа (внешний круг: человек одобрил)`);
+        setActiveMainTab('demo');
+        setActiveResultTab('scenes');
+      },
+    };
   };
 
   const generateAll = async () => {
@@ -1131,9 +1170,12 @@ export default function AnimationStudio() {
           </div>
         )}
 
-        {/* Loop Tab — луп-инженеринг и граф-инженеринг (v5.0) */}
+        {/* Loop Tab — луп-инженеринг, вложенные лупы и граф-инженеринг (v5.1) */}
         {activeMainTab === 'loop' && (
-          <LoopStudio />
+          <LoopStudio
+            sceneRequest={loopSceneRequest}
+            onConsumeSceneRequest={() => setLoopSceneRequest(null)}
+          />
         )}
 
         {/* Pipeline Tab */}
@@ -1344,7 +1386,37 @@ export default function AnimationStudio() {
                             </Badge>
                           )}
                         </div>
+                        {scene.improvedByLoop && (
+                          <Badge className="bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] w-fit">
+                            ♾️ Улучшено луп-циклом
+                          </Badge>
+                        )}
                         <p className="text-white/70 text-sm">{scene.description}</p>
+
+                        {/* v5.1: прогнать сцену через луп-движок */}
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          <button
+                            onClick={() => {
+                              setLoopSceneRequest(buildSceneLoopRequest(scene, i, 'single'));
+                              setActiveMainTab('loop');
+                            }}
+                            className="text-[11px] px-2.5 py-1 rounded-lg bg-purple-500/20 border border-purple-400/30 text-purple-200 hover:bg-purple-500/30 transition"
+                            title="Цикл доработает эту сцену: план → действие → наблюдение → коррекция"
+                          >
+                            ♾️ Прогнать через луп
+                          </button>
+                          <button
+                            onClick={() => {
+                              setLoopSceneRequest(buildSceneLoopRequest(scene, i, 'meta'));
+                              setActiveMainTab('loop');
+                            }}
+                            className="text-[11px] px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/30 transition"
+                            title="Мета-луп развернёт сцену в несколько микросцен через дочерние циклы"
+                          >
+                            🪆 Вложенный луп
+                          </button>
+                        </div>
+
                         {scene.dialogue && scene.dialogue.length > 0 && (
                           <div className="space-y-2 pt-2 border-t border-white/10">
                             {scene.dialogue.slice(0, 3).map((d, di) => (

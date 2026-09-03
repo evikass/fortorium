@@ -12,7 +12,7 @@
 //  • Шкала делегирования: человек — Дирижёр оркестра
 // ============================================================
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,8 +23,19 @@ import DebtMeters from './DebtMeters';
 import MemoryViewer from './MemoryViewer';
 import GraphView from './GraphView';
 import DelegationScale from './DelegationScale';
+import NestedLoops from './NestedLoops';
 
-type SubTab = 'loop' | 'graph' | 'scale';
+type SubTab = 'loop' | 'nested' | 'graph' | 'scale';
+
+// Запрос из демо-режима: прогнать сцену через луп
+export interface SceneLoopRequest {
+  mode: 'single' | 'meta';                       // одиночный цикл или вложенный луп
+  sceneNumber: number;
+  sceneTitle: string;
+  goal: string;                                  // цель, собранная из сцены
+  initialDraft: string;                          // текущий текст сцены — цикл ДОРАБАТЫВАЕТ его
+  applyDraft: (draft: string) => void;           // обратная запись результата в сцену демо-режима
+}
 
 const EXAMPLE_GOALS = [
   'Логлайн для мультфильма про робота, который научился мечтать',
@@ -32,8 +43,17 @@ const EXAMPLE_GOALS = [
   'Синопсис истории о дружбе ежика и облака',
 ];
 
-export default function LoopStudio() {
+export default function LoopStudio({
+  sceneRequest,
+  onConsumeSceneRequest,
+}: {
+  sceneRequest?: SceneLoopRequest | null;
+  onConsumeSceneRequest?: () => void;
+} = {}) {
   const [subTab, setSubTab] = useState<SubTab>('loop');
+
+  // Активная связка со сценой демо-режима (только для одиночного цикла)
+  const [activeScene, setActiveScene] = useState<SceneLoopRequest | null>(null);
 
   // Форма задачи
   const [goal, setGoal] = useState('');
@@ -50,6 +70,27 @@ export default function LoopStudio() {
   const [error, setError] = useState<string | null>(null);
   const [stopInfo, setStopInfo] = useState<{ reason: string; detail: string } | null>(null);
   const autoAborted = useRef(false);
+
+  // v5.1: запрос из демо-режима — предзаполняем задачу сценой и открываем нужную подвкладку
+  useEffect(() => {
+    if (sceneRequest) {
+      if (sceneRequest.mode === 'single') {
+        setSubTab('loop');
+        setActiveScene(sceneRequest);
+        setGoal(sceneRequest.goal);
+        setArtifactType('scene');
+      } else {
+        setSubTab('nested');
+      }
+      setError(null);
+      setStopInfo(null);
+    }
+  }, [sceneRequest]);
+
+  const consumeSceneRequest = () => {
+    setActiveScene(null);
+    onConsumeSceneRequest?.();
+  };
 
   // ---- API ----
   const call = useCallback(async (body: Record<string, unknown>): Promise<LoopStepResponse> => {
@@ -69,7 +110,13 @@ export default function LoopStudio() {
     autoAborted.current = false;
     const json = await call({
       action: 'init',
-      task: { goal, artifactType, maxIterations, qualityThreshold, maxTokens, autoMode },
+      task: {
+        goal, artifactType, maxIterations, qualityThreshold, maxTokens, autoMode,
+        // v5.1: связка со сценой демо-режима — цикл стартует из её текста
+        initialDraft: activeScene?.initialDraft,
+        source: activeScene ? 'demo-scene' : 'manual',
+        sourceLabel: activeScene ? `Сцена №${activeScene.sceneNumber} «${activeScene.sceneTitle}»` : undefined,
+      },
     });
     if (json.ok && json.state) {
       setState(json.state);
@@ -137,6 +184,7 @@ export default function LoopStudio() {
     setState(null);
     setStopInfo(null);
     setError(null);
+    consumeSceneRequest();
   };
 
   const status = state ? STATUS_LABELS[state.status] : null;
@@ -156,9 +204,10 @@ export default function LoopStudio() {
       </div>
 
       {/* Под-вкладки */}
-      <div className="flex gap-1 p-1 bg-white/5 rounded-xl w-fit">
+      <div className="flex gap-1 p-1 bg-white/5 rounded-xl w-fit flex-wrap">
         {([
           { id: 'loop', label: '♾️ Цикл' },
+          { id: 'nested', label: '🪆 Вложенные лупы' },
           { id: 'graph', label: '🕸️ Граф' },
           { id: 'scale', label: '📊 Шкала делегирования' },
         ] as Array<{ id: SubTab; label: string }>).map((t) => (
@@ -179,6 +228,28 @@ export default function LoopStudio() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Левая колонка: постановка задачи + 3 условия */}
           <div className="space-y-4">
+            {/* Связка со сценой демо-режима (v5.1) */}
+            {activeScene && (
+              <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-xs">
+                    <div className="text-cyan-300 font-semibold mb-0.5">🔗 Связано со сценой демо-режима</div>
+                    <div className="text-white/70">
+                      Сцена №{activeScene.sceneNumber} «{activeScene.sceneTitle}» — цикл стартует
+                      с её текущего текста (initialDraft), а лучший результат можно вернуть в сцену.
+                    </div>
+                  </div>
+                  <button
+                    onClick={consumeSceneRequest}
+                    className="text-white/40 hover:text-white text-xs flex-shrink-0"
+                    title="Отвязать сцену"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
+
             <Card className="bg-white/5 border-white/10">
               <CardHeader>
                 <CardTitle className="text-white text-base">🎯 Постановка задачи цикла</CardTitle>
@@ -414,8 +485,21 @@ export default function LoopStudio() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-white/85 text-sm whitespace-pre-wrap leading-relaxed">{state.bestDraft}</p>
-                  <div className="mt-3 pt-3 border-t border-white/10 text-[11px] text-white/40">
-                    👤 Решение о «публикации» — за человеком (внешний круг). ИИ предлагает, человек утверждает.
+                  <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="text-[11px] text-white/40">
+                      👤 Решение о «публикации» — за человеком (внешний круг). ИИ предлагает, человек утверждает.
+                    </div>
+                    {activeScene && isFinished && (
+                      <Button
+                        onClick={() => {
+                          activeScene.applyDraft(state.bestDraft || '');
+                          consumeSceneRequest();
+                        }}
+                        className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:opacity-90 text-white text-xs h-8"
+                      >
+                        ↩ Вернуть улучшенный текст в сцену №{activeScene.sceneNumber}
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -457,6 +541,22 @@ export default function LoopStudio() {
             </Card>
           </div>
         </div>
+      )}
+
+      {/* ---------- ПОДВКЛАДКА: ВЛОЖЕННЫЕ ЛУПЫ (v5.1) ---------- */}
+      {subTab === 'nested' && (
+        <NestedLoops
+          sceneRequest={
+            sceneRequest && sceneRequest.mode === 'meta'
+              ? {
+                  sceneNumber: sceneRequest.sceneNumber,
+                  sceneTitle: sceneRequest.sceneTitle,
+                  goal: sceneRequest.goal,
+                  applyDraft: sceneRequest.applyDraft,
+                }
+              : null
+          }
+        />
       )}
 
       {/* ---------- ПОДВКЛАДКА: ГРАФ ---------- */}

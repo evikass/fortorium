@@ -34,6 +34,14 @@ function sanitizeTask(raw: Record<string, unknown>): LoopTask | null {
     qualityThreshold: clamp(raw.qualityThreshold, 1, 10, 8),
     maxTokens: clamp(raw.maxTokens, 500, 500000, 30000),
     autoMode: Boolean(raw.autoMode),
+    // v5.1: связка с демо-режимом — цикл может стартовать из текста сцены
+    initialDraft: typeof raw.initialDraft === 'string' && raw.initialDraft.trim()
+      ? raw.initialDraft.trim().slice(0, 4000)
+      : undefined,
+    source: ['demo-scene', 'manual', 'meta-child'].includes(String(raw.source))
+      ? (String(raw.source) as LoopTask['source'])
+      : 'manual',
+    sourceLabel: typeof raw.sourceLabel === 'string' ? raw.sourceLabel.slice(0, 200) : undefined,
   };
 }
 

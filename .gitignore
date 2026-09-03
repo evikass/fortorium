@@ -51,8 +51,8 @@ server.log
 /skills/.z-ai-config
 
 # fortorium loop memory (runtime files)
-/memory
-memory/
+/memory/
+
 dev.log
 server.log
 test-image.png

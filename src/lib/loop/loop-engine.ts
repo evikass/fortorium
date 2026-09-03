@@ -44,8 +44,9 @@ export function createInitialState(runId: string, task: LoopTask): LoopState {
 }
 
 // ---------- LLM-хелпер (модель = "мозг", обвязка = "руки") ----------
+// Экспортируется для мета-лупа (meta-loop.ts) — тот же принцип graceful degradation
 
-async function llmCall(
+export async function llmCall(
   systemPrompt: string,
   userPrompt: string,
   maxTokens = 1200
@@ -69,7 +70,7 @@ async function llmCall(
   }
 }
 
-function extractJson(text: string): Record<string, unknown> | null {
+export function extractJson(text: string): Record<string, unknown> | null {
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) return null;
   try {
@@ -130,10 +131,13 @@ async function executeIteration(state: LoopState, plan: LoopPlan): Promise<{ dra
   const t = state.task;
   const prev = state.bestDraft;
   const crit = state.lastCritique;
+  // v5.1: если это первый виток и задан стартовый текст (например, сцена из демо-режима) —
+  // цикл не пишет с нуля, а ДОРАБАТЫВАЕТ существующий артефакт
+  const initialDraft = t.initialDraft?.trim() || null;
 
   const fallbackDraft = (): string => {
     // Эвристика: применяем критику текстуально, чтобы цикл двигался даже без LLM
-    const base = prev || `Черновик «${ARTIFACT_LABELS[t.artifactType]}» по цели: ${t.goal}.`;
+    const base = prev || initialDraft || `Черновик «${ARTIFACT_LABELS[t.artifactType]}» по цели: ${t.goal}.`;
     const fix = crit?.improvements ? `\n\nУчтено замечание критика: ${crit.improvements}.` : '';
     return `${base}\n\n(Виток ${state.iteration + 1}: ${plan.focus})${fix}`;
   };
@@ -151,6 +155,11 @@ ${prev}
 
 КРИТИКА: ${crit ? crit.weaknesses + ' ' + crit.improvements : ''}
 Напиши УЛУЧШЕННУЮ версию, исправив указанные слабости.`
+  : initialDraft
+  ? `ИСХОДНАЯ ВЕРСИЯ (черновик из демо-режима, требует доработки):
+${initialDraft}
+
+Напиши УЛУЧШЕННУЮ версию этого артефакта по плану витка, сохранив суть, но подняв качество.`
   : 'Напиши первую версию артефакта.'}`;
 
   const { text, degraded } = await llmCall(sys, prompt, 1500);
@@ -270,10 +279,13 @@ export async function runLoopStep(runId: string, redo = false): Promise<{
   const { draft, degraded: execDegraded } = await executeIteration(state, plan);
 
   // 4. НАБЛЮДЕНИЕ: скрипт-валидатор (барьер 1)
+  // v5.1: на первом витке эталоном служит initialDraft — цикл обязан улучшить исходник,
+  // а не выдать его обратно без изменений
   const sameIterPrev = state.iterations
     .filter(i => i.n === n)
     .sort((a, b) => b.attempt - a.attempt)[0];
-  const previousDraft = sameIterPrev?.draft ?? null;
+  const previousDraft = sameIterPrev?.draft
+    ?? (n === 1 && attempt === 1 ? t.initialDraft?.trim() || null : null);
   const scriptChecks = runScriptChecks(draft, t.artifactType, previousDraft);
   const failed = countFailed(scriptChecks);
 

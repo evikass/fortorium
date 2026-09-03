@@ -1,8 +1,9 @@
 // ============================================================
-// ФОРТОРИУМ v5.0 — Луп-инженеринг и Граф-инженеринг
+// ФОРТОРИУМ v5.1 — Луп-инженеринг, Граф-инженеринг и Вложенные лупы
 // Типы ядра цикла (План → Действие → Наблюдение → Коррекция)
 // Философия: память живёт в ФАЙЛАХ, а не в диалоге.
 // Каждый агент — "чистый": нулевой контекст, читает только файлы.
+// v5.1: связка с демо-режимом (initialDraft из сцены) + мета-луп над дочерними лупами
 // ============================================================
 
 // Тип артефакта, который производит цикл
@@ -16,6 +17,9 @@ export interface LoopTask {
   qualityThreshold: number;   // стоп-критерий №2: порог качества (0-10)
   maxTokens: number;          // стоп-критерий №3: бюджет в токенах
   autoMode: boolean;          // true = цикл без остановок (внешний круг отключён)
+  initialDraft?: string;      // v5.1: стартовый текст (например, текущая сцена из демо-режима) — цикл дорабатывает его
+  source?: 'demo-scene' | 'manual' | 'meta-child'; // откуда пришла задача
+  sourceLabel?: string;       // человекочитаемая метка источника ("Сцена №3 «Ночной город»")
 }
 
 // Результат детерминированной скрипт-проверки
@@ -106,6 +110,110 @@ export interface LoopStepResponse {
     reason: string;
     detail: string;
   };
+}
+
+// ---------- Вложенные лупы (v5.1): мета-луп над дочерними лупами ----------
+// Мета-луп = надзиратель: сам текст не пишет. Его витки:
+//   План      — разбить глобальную цель на подцели (по одной на дочерний луп)
+//   Действие  — продвинуть каждый дочерний луп на один виток
+//   Наблюдение— агрегировать баллы, долги и черновики детей
+//   Коррекция — мета-критик решает: продолжать / перезапустить слабого ребёнка / собрать финал
+// Внутренний круг — ИИ (дочерние лупы крутятся сами), внешний круг — человек (ворота мета-лупа).
+
+// Слот дочернего лупа внутри мета-лупа
+export interface ChildLoopSlot {
+  index: number;               // порядковый номер ребёнка
+  childRunId: string;          // id дочернего run'а (файлы лежат отдельно)
+  subGoal: string;             // подцель, назначенная мета-планировщиком
+  status: LoopStatus | 'not_created'; // статус дочернего цикла
+  reformulations: number;      // сколько раз мета-луп переформулировал подцель и перезапускал ребёнка
+  needsRestart: boolean;       // флаг: ребёнок провалился, на следующем мета-витке перезапустить
+  restartReason: string | null;
+  lastScore: number;           // последний балл ребёнка
+}
+
+// План мета-витка: стратегия надзирателя
+export interface MetaPlan {
+  strategy: string;            // общая стратегия мета-витка
+  subGoals: string[];          // подцели для детей (при первичном планировании или переформулировке)
+  decision: 'continue' | 'restart_weak' | 'finish';
+  notes: string;
+  degraded?: boolean;
+}
+
+// Результат ребёнка за мета-виток (агрегированное наблюдение)
+export interface MetaChildSnapshot {
+  index: number;
+  childRunId: string;
+  subGoal: string;
+  status: string;
+  score: number;
+  iterations: number;
+  tokens: number;
+  bestDraft: string | null;
+  steppedThisIteration: boolean;
+}
+
+// Запись одного мета-витка
+export interface MetaIterationRecord {
+  n: number;
+  plan: MetaPlan | null;
+  children: MetaChildSnapshot[];
+  assembly: string | null;     // черновая сборка из лучших черновиков детей
+  critique: Critique | null;   // вердикт мета-критика над сборкой
+  decision: string;            // что решил надзиратель
+  tokens: number;              // токены мета-уровня (план/критика/сборка) за этот виток
+  ms: number;
+  timestamp: number;
+}
+
+// Задача мета-лупа
+export interface MetaTask {
+  goal: string;                        // глобальная цель (что должен достичь надзиратель)
+  artifactType: ArtifactType;          // тип артефакта каждого ребёнка
+  childCount: number;                  // сколько дочерних лупов (2-4)
+  maxMetaIterations: number;           // стоп-критерий мета-уровня: лимит мета-витков (1-4)
+  childMaxIterations: number;          // лимит витков каждого ребёнка
+  childQualityThreshold: number;       // порог качества каждого ребёнка
+  metaQualityThreshold: number;        // порог качества финальной сборки
+  maxTokens: number;                   // общий бюджет в токенах (дети + мета-уровень)
+  autoMode: boolean;                   // ворота одобрения после каждого мета-витка
+}
+
+export type MetaStatus =
+  | 'ready'
+  | 'running'
+  | 'waiting_approval'
+  | 'done'
+  | 'stopped'
+  | 'limit_reached'
+  | 'budget_exceeded'
+  | 'error';
+
+// Состояние мета-лупа — живёт в файле meta-state.json
+export interface MetaState {
+  metaRunId: string;
+  task: MetaTask;
+  children: ChildLoopSlot[];
+  metaIteration: number;              // последний завершённый мета-виток
+  status: MetaStatus;
+  stopReason: string | null;
+  assembly: string | null;            // последняя сборка
+  bestAssembly: string | null;        // лучшая сборка за историю
+  bestAssemblyScore: number;
+  debts: DebtReport;                  // агрегированные долги (дети + мета-уровень)
+  history: MetaIterationRecord[];
+  created: number;
+  updated: number;
+}
+
+// Ответ API /api/loop/meta
+export interface MetaStepResponse {
+  ok: boolean;
+  error?: string;
+  state?: MetaState;
+  record?: MetaIterationRecord;
+  stopDecision?: { stopped: boolean; reason: string; detail: string };
 }
 
 // ---------- Граф-инженеринг (будущее: ветвящиеся графы агентов) ----------
