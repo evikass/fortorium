@@ -13,6 +13,7 @@ import {
   Mic, Scissors, Monitor
 } from 'lucide-react';
 import { initVersionSystem, CLIENT_VERSION, forceReload } from '@/lib/version';
+import LoopStudio from '@/components/loop/LoopStudio';
 
 // Интерфейсы
 interface Character {
@@ -125,7 +126,7 @@ export default function AnimationStudio() {
   const [script, setScript] = useState<Script | null>(null);
   const [currentPhase, setCurrentPhase] = useState<string>('');
   const [logs, setLogs] = useState<string[]>([]);
-  const [activeMainTab, setActiveMainTab] = useState<'demo' | 'agents' | 'svg' | 'pipeline'>('demo');
+  const [activeMainTab, setActiveMainTab] = useState<'demo' | 'agents' | 'svg' | 'pipeline' | 'loop'>('demo');
   const [activeResultTab, setActiveResultTab] = useState<'overview' | 'scenes' | 'characters'>('overview');
   
   const [agents, setAgents] = useState<AgentStatus[]>([
@@ -602,6 +603,7 @@ export default function AnimationStudio() {
             { id: 'svg', label: '🎨 SVG' },
             { id: 'agents', label: '🤖 Агенты' },
             { id: 'pipeline', label: '🔄 Пайплайн' },
+            { id: 'loop', label: '♾️ Луп' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1127,6 +1129,11 @@ export default function AnimationStudio() {
               })}
             </div>
           </div>
+        )}
+
+        {/* Loop Tab — луп-инженеринг и граф-инженеринг (v5.0) */}
+        {activeMainTab === 'loop' && (
+          <LoopStudio />
         )}
 
         {/* Pipeline Tab */}

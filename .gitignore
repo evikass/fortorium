@@ -49,3 +49,10 @@ prompt
 server.log
 # Skills directory
 /skills/.z-ai-config
+
+# fortorium loop memory (runtime files)
+/memory
+memory/
+dev.log
+server.log
+test-image.png
