@@ -33,6 +33,17 @@ export interface MemoryFileMeta {
 
 const BLOB_PREFIX = 'fortorium-memory';
 
+// v6.2: безопасный runId — только латиница/цифры/дефисы/подчёркивания.
+// runId попадает в ключи Blob и пути ФС: без проверки возможен path traversal
+// (например runId="../../etc"), поэтому все входные id прогоняются через эту функцию.
+export function sanitizeRunId(raw: string): string {
+  const id = String(raw || '').trim();
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}$/.test(id)) {
+    throw new Error(`Недопустимый runId: «${id.slice(0, 60)}» (разрешены латиница, цифры, дефис и подчёркивание)`);
+  }
+  return id;
+}
+
 const blobConfigured = (): boolean => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 
 // Какой бэкенд памяти активен прямо сейчас (для бейджа в UI)

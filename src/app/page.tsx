@@ -142,6 +142,8 @@ export default function AnimationStudio() {
 
   // v5.1: связка демо-режима с луп-циклом — запрос на прогон сцены через цикл
   const [loopSceneRequest, setLoopSceneRequest] = useState<SceneLoopRequest | null>(null);
+  // v6.2: запомненные луп-run по номерам сцен (для экспорта сборки с карточки сцены)
+  const [sceneLoopRuns, setSceneLoopRuns] = useState<Record<number, { kind: 'single' | 'meta'; runId: string }>>({});
   
   // SVG Team State
   const [svgAgents, setSvgAgents] = useState<AgentStatus[]>([
@@ -290,6 +292,11 @@ export default function AnimationStudio() {
         addLog(`♾️ Сцена ${sceneNumber} обновлена результатом лупа (внешний круг: человек одобрил)`);
         setActiveMainTab('demo');
         setActiveResultTab('scenes');
+      },
+      // v6.2: луп-компонент сообщает runId — сцена получает ссылки на экспорт сборки
+      onRunCreated: (info: { kind: 'single' | 'meta'; runId: string }) => {
+        setSceneLoopRuns(prev => ({ ...prev, [sceneNumber]: info }));
+        addLog(`📦 Сборка лупа для сцены ${sceneNumber} доступна к экспорту (run ${info.runId})`);
       },
     };
   };
@@ -1416,6 +1423,46 @@ export default function AnimationStudio() {
                             🪆 Вложенный луп
                           </button>
                         </div>
+
+                        {/* v6.2: экспорт сборки лупа, связанной с этой сценой */}
+                        {sceneLoopRuns[scene.number || i + 1] && (
+                          <div className="flex flex-wrap items-center gap-2 text-[10px] pt-0.5">
+                            <span className="text-white/30">
+                              📦 сборка лупа {sceneLoopRuns[scene.number || i + 1].kind === 'meta' ? '(вложенный)' : ''}:
+                            </span>
+                            {sceneLoopRuns[scene.number || i + 1].kind === 'meta' ? (
+                              <>
+                                <a
+                                  href={`/api/loop/meta?metaRunId=${sceneLoopRuns[scene.number || i + 1].runId}&export=json`}
+                                  className="text-cyan-300/80 hover:text-cyan-200 underline"
+                                >
+                                  ⬇️ JSON
+                                </a>
+                                <a
+                                  href={`/api/loop/meta?metaRunId=${sceneLoopRuns[scene.number || i + 1].runId}&export=md`}
+                                  className="text-cyan-300/80 hover:text-cyan-200 underline"
+                                >
+                                  ⬇️ отчёт .md
+                                </a>
+                              </>
+                            ) : (
+                              <>
+                                <a
+                                  href={`/api/loop?runId=${sceneLoopRuns[scene.number || i + 1].runId}&export=json`}
+                                  className="text-cyan-300/80 hover:text-cyan-200 underline"
+                                >
+                                  ⬇️ JSON
+                                </a>
+                                <a
+                                  href={`/api/loop?runId=${sceneLoopRuns[scene.number || i + 1].runId}&export=md`}
+                                  className="text-cyan-300/80 hover:text-cyan-200 underline"
+                                >
+                                  ⬇️ отчёт .md
+                                </a>
+                              </>
+                            )}
+                          </div>
+                        )}
 
                         {scene.dialogue && scene.dialogue.length > 0 && (
                           <div className="space-y-2 pt-2 border-t border-white/10">

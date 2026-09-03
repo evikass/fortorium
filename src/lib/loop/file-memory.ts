@@ -18,6 +18,7 @@ export {
   deleteRun,
   memoryBackend,
   getMemoryDir,
+  sanitizeRunId,
 } from './memory-store';
 
 export type { MemoryBackend, MemoryFileMeta } from './memory-store';

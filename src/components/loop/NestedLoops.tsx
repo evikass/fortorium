@@ -8,6 +8,7 @@
 // Внутренний круг — ИИ (дети автономны), внешний круг — человек (ворота мета-лупа).
 // v6.0: живое SVG-дерево вложенности (MetaLoopTree) + персистентная память Vercel Blob.
 // v6.1: экспорт сборки надзирателя — портативный JSON-документ + Markdown-паспорт (GET ?export=json|md).
+// v6.2: импорт сборки — воспроизведение мета-run из JSON (восстанавливаются файлы памяти мета-лупа и всех детей).
 // ============================================================
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -25,6 +26,7 @@ export interface MetaSceneRequest {
   sceneTitle: string;
   goal: string;
   applyDraft: (draft: string) => void;
+  onRunCreated?: (info: { kind: 'single' | 'meta'; runId: string }) => void; // v6.2: демо запоминает run для экспорта с карточки сцены
 }
 
 const EXAMPLE_GOALS = [
@@ -52,6 +54,7 @@ export default function NestedLoops({ sceneRequest }: { sceneRequest?: MetaScene
   const [stopInfo, setStopInfo] = useState<{ reason: string; detail: string } | null>(null);
   const [expandedChild, setExpandedChild] = useState<number | null>(null);
   const autoAborted = useRef(false);
+  const importFileRef = useRef<HTMLInputElement>(null); // v6.2: импорт сборки надзирателя из JSON
 
   // Связка с демо-режимом: предзаполнение при поступлении запроса
   useEffect(() => {
@@ -85,10 +88,14 @@ export default function NestedLoops({ sceneRequest }: { sceneRequest?: MetaScene
         goal, artifactType, childCount, maxMetaIterations,
         childMaxIterations, childQualityThreshold, metaQualityThreshold,
         maxTokens, autoMode,
+        // v6.2: структурная ссылка на сцену — попадает в экспорт сборки надзирателя
+        sceneRef: sceneRequest ? { sceneNumber: sceneRequest.sceneNumber, sceneTitle: sceneRequest.sceneTitle } : undefined,
       },
     });
     if (json.ok && json.state) {
       setMeta(json.state);
+      // v6.2: сообщаем демо-режиму runId — на карточке сцены появится ссылка на экспорт сборки
+      sceneRequest?.onRunCreated?.({ kind: 'meta', runId: json.state.metaRunId });
       if (autoMode) {
         setAutoRunning(true);
         let current = json.state;
@@ -152,6 +159,42 @@ export default function NestedLoops({ sceneRequest }: { sceneRequest?: MetaScene
     setMeta(null);
     setStopInfo(null);
     setError(null);
+  };
+
+  // v6.2: импорт сборки надзирателя — воспроизведение мета-run из экспортного JSON.
+  // Восстанавливаются файлы памяти мета-лупа И всех детей: состояние агента это его файлы.
+  const importAssembly = async (file: File) => {
+    setError(null);
+    setStopInfo(null);
+    setBusy(true);
+    try {
+      const doc = JSON.parse(await file.text());
+      const res = await fetch('/api/loop/meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'import', doc }),
+      });
+      const json = await res.json();
+      if (json.ok && json.state) {
+        setMeta(json.state);
+        // Подставляем параметры задачи в форму — надзирателя можно продолжить
+        setGoal(json.state.task.goal);
+        setArtifactType(json.state.task.artifactType);
+        setChildCount(json.state.task.childCount);
+        setMaxMetaIterations(json.state.task.maxMetaIterations);
+        setChildMaxIterations(json.state.task.childMaxIterations);
+        setChildQualityThreshold(json.state.task.childQualityThreshold);
+        setMetaQualityThreshold(json.state.task.metaQualityThreshold);
+        setMaxTokens(json.state.task.maxTokens);
+        setAutoMode(json.state.task.autoMode);
+      } else {
+        setError(json.error || 'Не удалось импортировать сборку');
+      }
+    } catch (e) {
+      setError(`Импорт не удался: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    setBusy(false);
+    if (importFileRef.current) importFileRef.current.value = '';
   };
 
   const status = meta ? STATUS_LABELS[meta.status] : null;
@@ -341,6 +384,28 @@ export default function NestedLoops({ sceneRequest }: { sceneRequest?: MetaScene
               </div>
             )}
 
+            {/* v6.2: импорт сборки надзирателя — воспроизведение мета-run из JSON */}
+            <div className="flex items-center gap-2 pt-1 border-t border-white/5 mt-1">
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) importAssembly(f); }}
+              />
+              <button
+                onClick={() => importFileRef.current?.click()}
+                disabled={busy || autoRunning}
+                className="text-[11px] px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition disabled:opacity-40"
+                title="Восстановить мета-run из экспортного JSON (fortorium-supervisor-assembly): дерево детей, журнал мета-витков и сборка вернутся на место"
+              >
+                ⬆️ Импорт сборки из JSON
+              </button>
+              <span className="text-[10px] text-white/30">
+                восстановит детей, журнал и сборку
+              </span>
+            </div>
+
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 text-red-300 rounded-lg p-2 text-xs">{error}</div>
             )}
@@ -423,6 +488,11 @@ export default function NestedLoops({ sceneRequest }: { sceneRequest?: MetaScene
             >
               ⬇️ Markdown-паспорт
             </a>
+            {meta.task.sceneRef && (
+              <span className="text-[10px] text-cyan-300/70">
+                🔗 сцена №{meta.task.sceneRef.sceneNumber} «{meta.task.sceneRef.sceneTitle}»
+              </span>
+            )}
           </div>
         )}
 

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MetaTask, ArtifactType } from '@/lib/loop/types';
 import { createMetaState, runMetaStep, metaHumanDecision } from '@/lib/loop/meta-loop';
-import { initRun, writeMemoryFile, readMemoryFile, deleteRun } from '@/lib/loop/file-memory';
+import { initRun, writeMemoryFile, readMemoryFile, deleteRun, sanitizeRunId } from '@/lib/loop/file-memory';
 import { buildSupervisorAssembly, supervisorExportToMarkdown } from '@/lib/loop/supervisor-export';
+import { restoreMemoryFiles, isValidSupervisorDoc } from '@/lib/loop/assembly-import';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -15,10 +16,21 @@ export const maxDuration = 120;
  * POST { action: 'accept', metaRunId }           — человек одобрил мета-виток (внешний круг)
  * POST { action: 'stop' , metaRunId }            — человек остановил мета-луп и всех детей под надзором
  * POST { action: 'reset', metaRunId }            — удалить мета-run вместе со всеми дочерними run-каталогами
+ * POST { action: 'import', doc }                 — v6.2: воспроизвести мета-run из сборки (fortorium-supervisor-assembly)
  * GET  { ?metaRunId }                            — прочитать meta-state.json
  * GET  { ?metaRunId&export=json }               — экспорт сборки надзирателя (полный JSON-документ)
  * GET  { ?metaRunId&export=md }                 — экспорт сборки надзирателя (Markdown-паспорт)
  */
+
+// v6.2: структурная связка со сценой демо-режима (та же форма, что в одиночном лупе)
+function sanitizeSceneRef(raw: unknown): MetaTask['sceneRef'] {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const r = raw as Record<string, unknown>;
+  const n = Number(r.sceneNumber);
+  const title = typeof r.sceneTitle === 'string' ? r.sceneTitle.trim() : '';
+  if (!Number.isFinite(n) || n < 1 || !title) return undefined;
+  return { sceneNumber: Math.round(n), sceneTitle: title.slice(0, 200) };
+}
 
 function sanitizeMetaTask(raw: Record<string, unknown>): MetaTask | null {
   const goal = typeof raw.goal === 'string' ? raw.goal.trim() : '';
@@ -40,6 +52,7 @@ function sanitizeMetaTask(raw: Record<string, unknown>): MetaTask | null {
     metaQualityThreshold: clamp(raw.metaQualityThreshold, 1, 10, 8),
     maxTokens: clamp(raw.maxTokens, 2000, 800000, 90000),
     autoMode: Boolean(raw.autoMode),
+    sceneRef: sanitizeSceneRef(raw.sceneRef),
   };
 }
 
@@ -67,33 +80,71 @@ export async function POST(req: NextRequest) {
       }
 
       case 'step': {
-        const metaRunId = String(body.metaRunId || '');
-        if (!metaRunId) return NextResponse.json({ ok: false, error: 'Нет metaRunId' }, { status: 400 });
+        const metaRunId = sanitizeRunId(String(body.metaRunId || ''));
         const { state, record, stopDecision } = await runMetaStep(metaRunId);
         return NextResponse.json({ ok: true, state, record, stopDecision });
       }
 
       case 'accept': {
-        const metaRunId = String(body.metaRunId || '');
-        if (!metaRunId) return NextResponse.json({ ok: false, error: 'Нет metaRunId' }, { status: 400 });
+        const metaRunId = sanitizeRunId(String(body.metaRunId || ''));
         const state = await metaHumanDecision(metaRunId, 'accept');
         return NextResponse.json({ ok: true, state });
       }
 
       case 'stop': {
-        const metaRunId = String(body.metaRunId || '');
-        if (!metaRunId) return NextResponse.json({ ok: false, error: 'Нет metaRunId' }, { status: 400 });
+        const metaRunId = sanitizeRunId(String(body.metaRunId || ''));
         const state = await metaHumanDecision(metaRunId, 'stop');
         return NextResponse.json({ ok: true, state });
       }
 
       case 'reset': {
-        const metaRunId = String(body.metaRunId || '');
-        if (!metaRunId) return NextResponse.json({ ok: false, error: 'Нет metaRunId' }, { status: 400 });
+        const metaRunId = sanitizeRunId(String(body.metaRunId || ''));
         for (const runId of allRunIdsOf(metaRunId)) {
           await deleteRun(runId);
         }
         return NextResponse.json({ ok: true });
+      }
+
+      case 'import': {
+        // v6.2: воспроизведение мета-run из сборки надзирателя:
+        // восстанавливаем файлы памяти мета-лупа И всех детей —
+        // состояние агента это его файлы, переносим файлы — переносим агента
+        const doc = body.doc;
+        if (!isValidSupervisorDoc(doc)) {
+          return NextResponse.json(
+            { ok: false, error: 'Это не файл сборки надзирателя: ожидался формат fortorium-supervisor-assembly' },
+            { status: 400 }
+          );
+        }
+        const metaRunId = sanitizeRunId(String(doc.metaRunId || ''));
+        const metaRes = await restoreMemoryFiles(metaRunId, doc.metaMemoryFiles as never);
+        let childRuns = 0;
+        let childRestored = 0;
+        let childSkipped = 0;
+        for (const child of (Array.isArray(doc.children) ? doc.children : []) as Array<Record<string, unknown>>) {
+          const childRunId = typeof child.childRunId === 'string' ? child.childRunId.trim() : '';
+          if (!childRunId) continue;
+          const res = await restoreMemoryFiles(sanitizeRunId(childRunId), child.memoryFiles as never);
+          childRuns++;
+          childRestored += res.restored;
+          childSkipped += res.skipped;
+        }
+        const state = await readMemoryFile(metaRunId, 'meta-state.json');
+        if (!state) {
+          return NextResponse.json(
+            { ok: false, error: 'В документе нет meta-state.json (или он был слишком велик для инлайна) — восстановление невозможно' },
+            { status: 422 }
+          );
+        }
+        return NextResponse.json({
+          ok: true,
+          state,
+          import: {
+            meta: metaRes,
+            childRuns,
+            childFiles: { restored: childRestored, skipped: childSkipped },
+          },
+        });
       }
 
       default:
@@ -107,8 +158,9 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const metaRunId = req.nextUrl.searchParams.get('metaRunId') || '';
-    if (!metaRunId) return NextResponse.json({ ok: false, error: 'Нет metaRunId' }, { status: 400 });
+    const rawMetaRunId = req.nextUrl.searchParams.get('metaRunId') || '';
+    if (!rawMetaRunId) return NextResponse.json({ ok: false, error: 'Нет metaRunId' }, { status: 400 });
+    const metaRunId = sanitizeRunId(rawMetaRunId);
 
     const exportMode = req.nextUrl.searchParams.get('export');
     if (exportMode) {

@@ -20,6 +20,13 @@ export interface LoopTask {
   initialDraft?: string;      // v5.1: стартовый текст (например, текущая сцена из демо-режима) — цикл дорабатывает его
   source?: 'demo-scene' | 'manual' | 'meta-child'; // откуда пришла задача
   sourceLabel?: string;       // человекочитаемая метка источника ("Сцена №3 «Ночной город»")
+  sceneRef?: SceneRef;        // v6.2: структурная связка со сценой демо-режима (попадает в экспорт сборки)
+}
+
+// v6.2: происхождение задачи — ссылка на сцену демо-режима (для трассировки сборок)
+export interface SceneRef {
+  sceneNumber: number;
+  sceneTitle: string;
 }
 
 // Результат детерминированной скрипт-проверки
@@ -178,6 +185,7 @@ export interface MetaTask {
   metaQualityThreshold: number;        // порог качества финальной сборки
   maxTokens: number;                   // общий бюджет в токенах (дети + мета-уровень)
   autoMode: boolean;                   // ворота одобрения после каждого мета-витка
+  sceneRef?: SceneRef;                 // v6.2: связка со сценой демо-режима (для трассировки сборок)
 }
 
 export type MetaStatus =

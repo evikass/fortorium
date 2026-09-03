@@ -1,7 +1,7 @@
 'use client';
 
 // ============================================================
-// ФОРТОРИУМ v6.0 — Вкладка LOOP
+// ФОРТОРИУМ v6.2 — Вкладка LOOP
 // Луп-инженеринг: цикл План → Действие → Наблюдение → Коррекция.
 // Реализует ключевые идеи видео:
 //  • Чистые агенты с нулевым контекстом и файловой памятью (v6.0: Vercel Blob — персистентно)
@@ -10,6 +10,7 @@
 //  • Правило внутреннего/внешнего круга (ворота одобрения)
 //  • Граф-инженеринг как следующий уровень
 //  • Шкала делегирования: человек — Дирижёр оркестра
+// v6.2: экспорт/импорт сборки цикла (портативный run) + sceneRef для трассировки
 // ============================================================
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -35,6 +36,7 @@ export interface SceneLoopRequest {
   goal: string;                                  // цель, собранная из сцены
   initialDraft: string;                          // текущий текст сцены — цикл ДОРАБАТЫВАЕТ его
   applyDraft: (draft: string) => void;           // обратная запись результата в сцену демо-режима
+  onRunCreated?: (info: { kind: 'single' | 'meta'; runId: string }) => void; // v6.2: демо запоминает run для экспорта с карточки сцены
 }
 
 const EXAMPLE_GOALS = [
@@ -70,6 +72,7 @@ export default function LoopStudio({
   const [error, setError] = useState<string | null>(null);
   const [stopInfo, setStopInfo] = useState<{ reason: string; detail: string } | null>(null);
   const autoAborted = useRef(false);
+  const importFileRef = useRef<HTMLInputElement>(null); // v6.2: импорт сборки из JSON
 
   // v5.1: запрос из демо-режима — предзаполняем задачу сценой и открываем нужную подвкладку
   useEffect(() => {
@@ -116,10 +119,14 @@ export default function LoopStudio({
         initialDraft: activeScene?.initialDraft,
         source: activeScene ? 'demo-scene' : 'manual',
         sourceLabel: activeScene ? `Сцена №${activeScene.sceneNumber} «${activeScene.sceneTitle}»` : undefined,
+        // v6.2: структурная ссылка на сцену — попадает в экспорт сборки (происхождение артефакта)
+        sceneRef: activeScene ? { sceneNumber: activeScene.sceneNumber, sceneTitle: activeScene.sceneTitle } : undefined,
       },
     });
     if (json.ok && json.state) {
       setState(json.state);
+      // v6.2: сообщаем демо-режиму runId — на карточке сцены появится ссылка на экспорт сборки
+      activeScene?.onRunCreated?.({ kind: 'single', runId: json.state.runId });
       // Автопрогон: цикл крутится сам, пока статус running (autoMode)
       if (autoMode) {
         setAutoRunning(true);
@@ -185,6 +192,39 @@ export default function LoopStudio({
     setStopInfo(null);
     setError(null);
     consumeSceneRequest();
+  };
+
+  // v6.2: импорт сборки — воспроизведение run из экспортного JSON-документа.
+  // Состояние агента это его файлы: восстановили файлы — продолжаем цикл с того же места.
+  const importAssembly = async (file: File) => {
+    setError(null);
+    setStopInfo(null);
+    setBusy(true);
+    try {
+      const doc = JSON.parse(await file.text());
+      const res = await fetch('/api/loop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'import', doc }),
+      });
+      const json = await res.json();
+      if (json.ok && json.state) {
+        setState(json.state);
+        // Подставляем параметры задачи в форму — run можно продолжить витками
+        setGoal(json.state.task.goal);
+        setArtifactType(json.state.task.artifactType);
+        setMaxIterations(json.state.task.maxIterations);
+        setQualityThreshold(json.state.task.qualityThreshold);
+        setMaxTokens(json.state.task.maxTokens);
+        setAutoMode(json.state.task.autoMode);
+      } else {
+        setError(json.error || 'Не удалось импортировать сборку');
+      }
+    } catch (e) {
+      setError(`Импорт не удался: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    setBusy(false);
+    if (importFileRef.current) importFileRef.current.value = ''; // тот же файл можно выбрать повторно
   };
 
   const status = state ? STATUS_LABELS[state.status] : null;
@@ -392,6 +432,28 @@ export default function LoopStudio({
                   </div>
                 )}
 
+                {/* v6.2: импорт сборки — воспроизведение run из JSON */}
+                <div className="flex items-center gap-2 pt-1 border-t border-white/5 mt-1">
+                  <input
+                    ref={importFileRef}
+                    type="file"
+                    accept=".json,application/json"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) importAssembly(f); }}
+                  />
+                  <button
+                    onClick={() => importFileRef.current?.click()}
+                    disabled={busy || autoRunning}
+                    className="text-[11px] px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition disabled:opacity-40"
+                    title="Восстановить run из экспортного JSON (fortorium-loop-assembly): история витков, долги и файлы памяти вернутся на место"
+                  >
+                    ⬆️ Импорт сборки из JSON
+                  </button>
+                  <span className="text-[10px] text-white/30">
+                    восстановит историю витков и позволит продолжить цикл
+                  </span>
+                </div>
+
                 {error && (
                   <div className="bg-red-500/10 border border-red-500/30 text-red-300 rounded-lg p-2 text-xs">{error}</div>
                 )}
@@ -463,6 +525,30 @@ export default function LoopStudio({
               </div>
             )}
 
+            {/* v6.2: экспорт сборки одиночного цикла + метка происхождения */}
+            {state && (
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="text-white/40">📦 Экспорт сборки цикла:</span>
+                <a
+                  href={`/api/loop?runId=${state.runId}&export=json`}
+                  className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-cyan-300 hover:text-cyan-200 hover:border-cyan-500/40 transition"
+                >
+                  ⬇️ JSON (полная сборка + память)
+                </a>
+                <a
+                  href={`/api/loop?runId=${state.runId}&export=md`}
+                  className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-cyan-300 hover:text-cyan-200 hover:border-cyan-500/40 transition"
+                >
+                  ⬇️ Markdown-паспорт
+                </a>
+                {state.task.sceneRef && (
+                  <span className="text-[10px] text-cyan-300/70">
+                    🔗 сцена №{state.task.sceneRef.sceneNumber} «{state.task.sceneRef.sceneTitle}»
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Причина остановки */}
             {stopInfo && (
               <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-3">
@@ -490,15 +576,23 @@ export default function LoopStudio({
                       👤 Решение о «публикации» — за человеком (внешний круг). ИИ предлагает, человек утверждает.
                     </div>
                     {activeScene && isFinished && (
-                      <Button
-                        onClick={() => {
-                          activeScene.applyDraft(state.bestDraft || '');
-                          consumeSceneRequest();
-                        }}
-                        className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:opacity-90 text-white text-xs h-8"
-                      >
-                        ↩ Вернуть улучшенный текст в сцену №{activeScene.sceneNumber}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`/api/loop?runId=${state.runId}&export=md`}
+                          className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-cyan-300 hover:text-cyan-200 hover:border-cyan-500/40 transition text-[11px]"
+                        >
+                          ⬇️ экспорт
+                        </a>
+                        <Button
+                          onClick={() => {
+                            activeScene.applyDraft(state.bestDraft || '');
+                            consumeSceneRequest();
+                          }}
+                          className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:opacity-90 text-white text-xs h-8"
+                        >
+                          ↩ Вернуть улучшенный текст в сцену №{activeScene.sceneNumber}
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </CardContent>
