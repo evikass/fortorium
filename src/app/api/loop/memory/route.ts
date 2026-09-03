@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listMemoryFiles, readMemoryFile } from '@/lib/loop/file-memory';
+import { listMemoryFiles, readMemoryFile, memoryBackend } from '@/lib/loop/file-memory';
 
 export const runtime = 'nodejs';
 
 /**
- * API файловой памяти цикла (v5.0 → починено в v5.1: файл существовал не во всех деплоях).
+ * API памяти цикла (v5.0 → v6.0: бэкенд — Vercel Blob или локальная ФС).
  *
- * GET ?runId=...                 — список файлов памяти run'а (name, size, mtime)
+ * GET ?runId=...                 — список файлов памяти run'а (name, size, mtime) + активный backend
  * GET ?runId=...&file=state.json — содержимое конкретного файла
  */
 
@@ -22,11 +22,11 @@ export async function GET(req: NextRequest) {
       if (content === null) {
         return NextResponse.json({ ok: false, error: 'Файл не найден' }, { status: 404 });
       }
-      return NextResponse.json({ ok: true, name: file, content });
+      return NextResponse.json({ ok: true, name: file, content, backend: memoryBackend() });
     }
 
     const files = await listMemoryFiles(runId);
-    return NextResponse.json({ ok: true, files });
+    return NextResponse.json({ ok: true, files, backend: memoryBackend() });
   } catch (error) {
     console.error('[API/loop/memory] error:', error);
     return NextResponse.json({ ok: false, error: String(error) }, { status: 500 });

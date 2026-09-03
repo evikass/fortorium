@@ -18,6 +18,7 @@ interface MemoryFileMeta {
 
 export default function MemoryViewer({ runId }: { runId: string | null }) {
   const [files, setFiles] = useState<MemoryFileMeta[]>([]);
+  const [backend, setBackend] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,7 @@ export default function MemoryViewer({ runId }: { runId: string | null }) {
       const json = await res.json();
       if (json.ok) {
         setFiles(json.files || []);
+        setBackend(json.backend || null);
         return json.files as MemoryFileMeta[];
       }
     } catch (e) {
@@ -76,6 +78,27 @@ export default function MemoryViewer({ runId }: { runId: string | null }) {
           ⟳ Обновить
         </Button>
       </div>
+
+      {/* v6.0: бейдж активного хранилища */}
+      {backend && (
+        <div
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] border ${
+            backend === 'vercel-blob'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+              : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+          }`}
+        >
+          {backend === 'vercel-blob' ? (
+            <>
+              🟢 <b>Vercel Blob</b> — персистентная: переживает деплои и рестарты
+            </>
+          ) : (
+            <>
+              🟠 <b>Локальная ФС</b> — на Vercel эфемерна; подключите Blob Store в дашборде Vercel
+            </>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-1.5">
         {files.map((f) => (

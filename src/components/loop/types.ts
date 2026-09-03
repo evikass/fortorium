@@ -1,5 +1,9 @@
 // Клиентские типы вкладки LOOP (зеркало серверных типов из src/lib/loop)
-export type { LoopTask, LoopState, IterationRecord, ScriptCheck, Critique, LoopPlan, DebtReport, GraphRouteResult } from '@/lib/loop/types';
+export type {
+  LoopTask, LoopState, IterationRecord, ScriptCheck, Critique, LoopPlan, DebtReport, GraphRouteResult,
+  ArtifactType, MetaTask, MetaState, MetaPlan, MetaChildSnapshot, MetaIterationRecord, ChildLoopSlot,
+  MetaStatus,
+} from '@/lib/loop/types';
 
 export interface LoopStepResponse {
   ok: boolean;

@@ -1,11 +1,12 @@
 'use client';
 
 // ============================================================
-// ФОРТОРИУМ v5.1 — Подвкладка «Вложенные лупы» (луп над лупом)
+// ФОРТОРИУМ v6.0 — Подвкладка «Вложенные лупы» (луп над лупом)
 // Мета-луп = надзиратель: сам текст не пишет, а управляет дочерними лупами.
 //   План → дети делают по витку → агрегация → мета-критик решает: продолжать /
 //   перезапустить слабого ребёнка / собрать финал.
 // Внутренний круг — ИИ (дети автономны), внешний круг — человек (ворота мета-лупа).
+// v6.0: живое SVG-дерево вложенности (MetaLoopTree) + персистентная память Vercel Blob.
 // ============================================================
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -15,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { MetaStepResponse, MetaState, STATUS_LABELS, ArtifactType } from './types';
 import { ARTIFACT_LABELS } from '@/lib/loop/types';
 import DebtMeters from './DebtMeters';
+import MetaLoopTree from './MetaLoopTree';
 
 // Запрос из демо-режима: улучшить сцену через вложенный луп (развёртывание в микросцены)
 export interface MetaSceneRequest {
@@ -439,6 +441,25 @@ export default function NestedLoops({ sceneRequest }: { sceneRequest?: MetaScene
             </div>
           </div>
         )}
+
+        {/* v6.0: живое дерево вложенных лупов (корень-надзиратель → ветви-дети) */}
+        <Card className="bg-white/5 border-white/10">
+          <CardHeader>
+            <CardTitle className="text-white text-base">🌳 Дерево вложенных лупов</CardTitle>
+            <CardDescription className="text-white/50 text-xs">
+              На корне — надзиратель, на ветвях — дочерние циклы со своим План → Действие → Наблюдение → Коррекция.
+              Цвет ребра — статус ветви, «↻ N» — рёбра самокоррекции надзирателя
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MetaLoopTree
+              meta={meta}
+              plannedCount={childCount}
+              selectedChild={expandedChild}
+              onChildClick={(i) => setExpandedChild(expandedChild === i ? null : i)}
+            />
+          </CardContent>
+        </Card>
 
         {/* Дочерние лупы */}
         {meta && meta.children.length > 0 && (
