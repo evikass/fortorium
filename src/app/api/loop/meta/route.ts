@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { MetaTask, ArtifactType } from '@/lib/loop/types';
 import { createMetaState, runMetaStep, metaHumanDecision } from '@/lib/loop/meta-loop';
 import { initRun, writeMemoryFile, readMemoryFile, deleteRun } from '@/lib/loop/file-memory';
+import { buildSupervisorAssembly, supervisorExportToMarkdown } from '@/lib/loop/supervisor-export';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -15,6 +16,8 @@ export const maxDuration = 120;
  * POST { action: 'stop' , metaRunId }            — человек остановил мета-луп и всех детей под надзором
  * POST { action: 'reset', metaRunId }            — удалить мета-run вместе со всеми дочерними run-каталогами
  * GET  { ?metaRunId }                            — прочитать meta-state.json
+ * GET  { ?metaRunId&export=json }               — экспорт сборки надзирателя (полный JSON-документ)
+ * GET  { ?metaRunId&export=md }                 — экспорт сборки надзирателя (Markdown-паспорт)
  */
 
 function sanitizeMetaTask(raw: Record<string, unknown>): MetaTask | null {
@@ -106,6 +109,30 @@ export async function GET(req: NextRequest) {
   try {
     const metaRunId = req.nextUrl.searchParams.get('metaRunId') || '';
     if (!metaRunId) return NextResponse.json({ ok: false, error: 'Нет metaRunId' }, { status: 400 });
+
+    const exportMode = req.nextUrl.searchParams.get('export');
+    if (exportMode) {
+      // v6.1: экспорт сборки надзирателя — портативный документ (JSON или Markdown)
+      if (!['json', 'md'].includes(exportMode)) {
+        return NextResponse.json({ ok: false, error: `Неизвестный формат экспорта: ${exportMode}` }, { status: 400 });
+      }
+      const doc = await buildSupervisorAssembly(metaRunId);
+      if (exportMode === 'md') {
+        return new NextResponse(supervisorExportToMarkdown(doc), {
+          headers: {
+            'Content-Type': 'text/markdown; charset=utf-8',
+            'Content-Disposition': `attachment; filename="fortorium-supervisor-${metaRunId}.md"`,
+          },
+        });
+      }
+      return new NextResponse(JSON.stringify(doc, null, 2), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Content-Disposition': `attachment; filename="fortorium-supervisor-${metaRunId}.json"`,
+        },
+      });
+    }
+
     const state = await readMemoryFile(metaRunId, 'meta-state.json');
     if (!state) return NextResponse.json({ ok: false, error: 'Мета-run не найден' }, { status: 404 });
     return NextResponse.json({ ok: true, state });

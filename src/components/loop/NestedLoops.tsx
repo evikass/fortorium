@@ -7,6 +7,7 @@
 //   перезапустить слабого ребёнка / собрать финал.
 // Внутренний круг — ИИ (дети автономны), внешний круг — человек (ворота мета-лупа).
 // v6.0: живое SVG-дерево вложенности (MetaLoopTree) + персистентная память Vercel Blob.
+// v6.1: экспорт сборки надзирателя — портативный JSON-документ + Markdown-паспорт (GET ?export=json|md).
 // ============================================================
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -406,6 +407,25 @@ export default function NestedLoops({ sceneRequest }: { sceneRequest?: MetaScene
           </div>
         )}
 
+        {/* v6.1: экспорт сборки надзирателя — портативный документ всего run-а */}
+        {meta && (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-white/40">📦 Экспорт сборки надзирателя:</span>
+            <a
+              href={`/api/loop/meta?metaRunId=${meta.metaRunId}&export=json`}
+              className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-cyan-300 hover:text-cyan-200 hover:border-cyan-500/40 transition"
+            >
+              ⬇️ JSON (полная сборка + память)
+            </a>
+            <a
+              href={`/api/loop/meta?metaRunId=${meta.metaRunId}&export=md`}
+              className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-cyan-300 hover:text-cyan-200 hover:border-cyan-500/40 transition"
+            >
+              ⬇️ Markdown-паспорт
+            </a>
+          </div>
+        )}
+
         {stopInfo && (
           <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-3">
             <div className="text-cyan-300 text-xs font-semibold mb-1">🛑 Критерий остановки мета-лупа сработал</div>
@@ -540,9 +560,15 @@ export default function NestedLoops({ sceneRequest }: { sceneRequest?: MetaScene
               <p className="text-white/85 text-sm whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto">
                 {meta.bestAssembly}
               </p>
-              <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between gap-3">
-                <div className="text-[11px] text-white/40">
-                  👤 Публикация сборки — решение человека (внешний круг)
+              <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-white/40">
+                  <span>👤 Публикация сборки — решение человека (внешний круг)</span>
+                  <a
+                    href={`/api/loop/meta?metaRunId=${meta.metaRunId}&export=md`}
+                    className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-cyan-300 hover:text-cyan-200 hover:border-cyan-500/40 transition"
+                  >
+                    ⬇️ экспорт
+                  </a>
                 </div>
                 {sceneRequest && isFinished && (
                   <Button
