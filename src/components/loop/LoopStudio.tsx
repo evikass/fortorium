@@ -103,16 +103,24 @@ export default function LoopStudio({
     }
   }, []);
 
-  // v6.3: публикация сборки текущего цикла в галерею (upsert по runId)
+  // v6.3: публикация сборки текущего цикла в галерею (upsert по runId).
+  // Публикуем через ДОКУМЕНТ: клиент сначала берёт сборку у /api/loop?export=json
+  // (тот же роут, что создал run — на serverless с эфемерной памятью лямбда
+  // галереи не увидела бы чужие файлы /tmp), затем отправляет doc в галерею.
   const publishRun = async () => {
     if (!state || galleryBusy) return;
     setPubNote(null);
     setGalleryBusy(true);
     try {
+      const docRes = await fetch(`/api/loop?runId=${state.runId}&export=json`);
+      const doc = await docRes.json();
+      if (!doc || doc.format !== 'fortorium-loop-assembly') {
+        throw new Error('Не удалось получить сборку цикла для публикации');
+      }
       const res = await fetch('/api/loop/gallery', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ runId: state.runId }),
+        body: JSON.stringify({ doc }),
       });
       const json = await res.json();
       setPubNote(json.ok ? (json.note || 'Опубликовано в галерее') : (json.error || 'Не удалось опубликовать'));

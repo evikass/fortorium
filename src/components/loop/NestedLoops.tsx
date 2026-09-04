@@ -70,16 +70,23 @@ export default function NestedLoops({
   const [pubNote, setPubNote] = useState<string | null>(null);
   const [galleryBusy, setGalleryBusy] = useState(false);
 
-  // v6.3: публикация сборки надзирателя в галерею (upsert по metaRunId)
+  // v6.3: публикация сборки надзирателя в галерею (upsert по metaRunId).
+  // Как и в одиночном цикле — через ДОКУМЕНТ: сначала /api/loop/meta?export=json
+  // (свой роут видит свою память на эфемерном хранилище), затем POST doc в галерею.
   const publishMetaRun = async () => {
     if (!meta || galleryBusy) return;
     setPubNote(null);
     setGalleryBusy(true);
     try {
+      const docRes = await fetch(`/api/loop/meta?metaRunId=${meta.metaRunId}&export=json`);
+      const doc = await docRes.json();
+      if (!doc || doc.format !== 'fortorium-supervisor-assembly') {
+        throw new Error('Не удалось получить сборку надзирателя для публикации');
+      }
       const res = await fetch('/api/loop/gallery', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ metaRunId: meta.metaRunId }),
+        body: JSON.stringify({ doc }),
       });
       const json = await res.json();
       setPubNote(json.ok ? (json.note || 'Опубликовано в галерее') : (json.error || 'Не удалось опубликовать'));
