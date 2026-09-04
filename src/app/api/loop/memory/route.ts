@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listMemoryFiles, readMemoryFile, memoryBackend } from '@/lib/loop/file-memory';
+import { listMemoryFiles, readMemoryFile, memoryBackend, sanitizeRunId } from '@/lib/loop/file-memory';
 
 export const runtime = 'nodejs';
 
@@ -8,12 +8,17 @@ export const runtime = 'nodejs';
  *
  * GET ?runId=...                 — список файлов памяти run'а (name, size, mtime) + активный backend
  * GET ?runId=...&file=state.json — содержимое конкретного файла
+ *
+ * v6.3.1: runId прогоняется через sanitizeRunId — он попадает в ключи Blob
+ * и пути ФС; без санитизации на фоллбэке local-fs возможен path traversal
+ * (чтение произвольных файлов через ?runId=../../..). Роут был пропущен
+ * при санитизации v6.2 — закрываю.
  */
-
 export async function GET(req: NextRequest) {
   try {
-    const runId = req.nextUrl.searchParams.get('runId') || '';
-    if (!runId) return NextResponse.json({ ok: false, error: 'Нет runId' }, { status: 400 });
+    const rawRunId = req.nextUrl.searchParams.get('runId') || '';
+    if (!rawRunId) return NextResponse.json({ ok: false, error: 'Нет runId' }, { status: 400 });
+    const runId = sanitizeRunId(rawRunId);
 
     const file = req.nextUrl.searchParams.get('file');
     if (file) {
