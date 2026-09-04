@@ -11,6 +11,7 @@
 //  • Граф-инженеринг как следующий уровень
 //  • Шкала делегирования: человек — Дирижёр оркестра
 // v6.2: экспорт/импорт сборки цикла (портативный run) + sceneRef для трассировки
+// v6.3: галерея сборок — публичная полка портативных run-ов (публикация/восстановление/возврат в демо)
 // ============================================================
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -25,8 +26,9 @@ import MemoryViewer from './MemoryViewer';
 import GraphView from './GraphView';
 import DelegationScale from './DelegationScale';
 import NestedLoops from './NestedLoops';
+import AssemblyGallery, { RestoredRunInfo } from './AssemblyGallery';
 
-type SubTab = 'loop' | 'nested' | 'graph' | 'scale';
+type SubTab = 'loop' | 'nested' | 'graph' | 'scale' | 'gallery';
 
 // Запрос из демо-режима: прогнать сцену через луп
 export interface SceneLoopRequest {
@@ -48,9 +50,12 @@ const EXAMPLE_GOALS = [
 export default function LoopStudio({
   sceneRequest,
   onConsumeSceneRequest,
+  onRestoreScene,
 }: {
   sceneRequest?: SceneLoopRequest | null;
   onConsumeSceneRequest?: () => void;
+  // v6.3: восстановление сборки из галереи как сцены демо-режима (колбэк из page.tsx)
+  onRestoreScene?: (doc: Record<string, unknown>) => void;
 } = {}) {
   const [subTab, setSubTab] = useState<SubTab>('loop');
 
@@ -73,6 +78,49 @@ export default function LoopStudio({
   const [stopInfo, setStopInfo] = useState<{ reason: string; detail: string } | null>(null);
   const autoAborted = useRef(false);
   const importFileRef = useRef<HTMLInputElement>(null); // v6.2: импорт сборки из JSON
+
+  // v6.3: галерея сборок
+  const [pubNote, setPubNote] = useState<string | null>(null);
+  const [galleryBusy, setGalleryBusy] = useState(false);
+  const [pendingMetaState, setPendingMetaState] = useState<Record<string, unknown> | null>(null); // восстановленный мета-run → в NestedLoops
+
+  // v6.3: восстановленный из галереи run открывается в своей подвкладке
+  const handleRestoredRun = useCallback((info: RestoredRunInfo) => {
+    if (info.kind === 'loop') {
+      const st = info.state as unknown as LoopState;
+      setState(st);
+      setGoal(st.task.goal);
+      setArtifactType(st.task.artifactType);
+      setMaxIterations(st.task.maxIterations);
+      setQualityThreshold(st.task.qualityThreshold);
+      setMaxTokens(st.task.maxTokens);
+      setAutoMode(st.task.autoMode);
+      setStopInfo(null);
+      setSubTab('loop');
+    } else {
+      setPendingMetaState(info.state); // NestedLoops заберёт через проп restoredMeta
+      setSubTab('nested');
+    }
+  }, []);
+
+  // v6.3: публикация сборки текущего цикла в галерею (upsert по runId)
+  const publishRun = async () => {
+    if (!state || galleryBusy) return;
+    setPubNote(null);
+    setGalleryBusy(true);
+    try {
+      const res = await fetch('/api/loop/gallery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runId: state.runId }),
+      });
+      const json = await res.json();
+      setPubNote(json.ok ? (json.note || 'Опубликовано в галерее') : (json.error || 'Не удалось опубликовать'));
+    } catch (e) {
+      setPubNote(`Ошибка публикации: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    setGalleryBusy(false);
+  };
 
   // v5.1: запрос из демо-режима — предзаполняем задачу сценой и открываем нужную подвкладку
   useEffect(() => {
@@ -248,6 +296,7 @@ export default function LoopStudio({
         {([
           { id: 'loop', label: '♾️ Цикл' },
           { id: 'nested', label: '🪆 Вложенные лупы' },
+          { id: 'gallery', label: '🗂 Галерея сборок' },
           { id: 'graph', label: '🕸️ Граф' },
           { id: 'scale', label: '📊 Шкала делегирования' },
         ] as Array<{ id: SubTab; label: string }>).map((t) => (
@@ -541,11 +590,20 @@ export default function LoopStudio({
                 >
                   ⬇️ Markdown-паспорт
                 </a>
+                <button
+                  onClick={publishRun}
+                  disabled={galleryBusy}
+                  className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-emerald-300 hover:text-emerald-200 hover:border-emerald-500/40 transition disabled:opacity-40"
+                  title="Опубликовать сборку в галерее (повторная публикация обновит запись)"
+                >
+                  {galleryBusy ? 'публикация…' : '↗️ В галерею'}
+                </button>
                 {state.task.sceneRef && (
                   <span className="text-[10px] text-cyan-300/70">
                     🔗 сцена №{state.task.sceneRef.sceneNumber} «{state.task.sceneRef.sceneTitle}»
                   </span>
                 )}
+                {pubNote && <span className="w-full text-[10px] text-emerald-300/90">{pubNote}</span>}
               </div>
             )}
 
@@ -650,7 +708,15 @@ export default function LoopStudio({
                 }
               : null
           }
+          // v6.3: run, восстановленный из галереи, открывается здесь
+          restoredMeta={pendingMetaState}
+          onRestoredMetaConsumed={() => setPendingMetaState(null)}
         />
+      )}
+
+      {/* ---------- ПОДВКЛАДКА: ГАЛЕРЕЯ СБОРОК (v6.3) ---------- */}
+      {subTab === 'gallery' && (
+        <AssemblyGallery onRestoreScene={onRestoreScene} onRestoredRun={handleRestoredRun} />
       )}
 
       {/* ---------- ПОДВКЛАДКА: ГРАФ ---------- */}

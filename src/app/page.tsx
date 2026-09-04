@@ -301,6 +301,74 @@ export default function AnimationStudio() {
     };
   };
 
+  // ===== v6.3: возврат сборки (из галереи или импорта) в демо-режим как сцены =====
+  // Лучший текст сборки становится описанием сцены: обновляем сцену-источник по
+  // sceneRef, а если сценария нет — создаём минимальный каркас сценария со сценой.
+  const restoreAssemblyToScene = (doc: Record<string, unknown>) => {
+    const isSupervisor = doc.format === 'fortorium-supervisor-assembly';
+    const text = isSupervisor
+      ? String((doc.assembly as Record<string, unknown> | undefined)?.best || '')
+      : String((doc.result as Record<string, unknown> | undefined)?.best || '');
+    const goal = String((doc.task as Record<string, unknown> | undefined)?.goal || '');
+    const sceneRef = (doc.task as Record<string, unknown> | undefined)?.sceneRef as
+      | { sceneNumber: number; sceneTitle: string }
+      | undefined;
+    const body = text || goal || 'Текст сборки пуст';
+
+    setScript(prev => {
+      // Сцена-источник найдена в текущем сценарии — обновляем её текст (как applyDraft в v5.1)
+      if (prev) {
+        const scenes = [...prev.scenes];
+        const idx = sceneRef
+          ? scenes.findIndex(s => s.number === sceneRef.sceneNumber)
+          : -1;
+        if (idx >= 0) {
+          scenes[idx] = { ...scenes[idx], description: body, improvedByLoop: true };
+          addLog(`↩️ Сборка ${String(doc.runId || doc.metaRunId || '')} возвращена в сцену №${sceneRef!.sceneNumber} (внешний круг: вы решили, что текст готов)`);
+          return { ...prev, scenes };
+        }
+        // Сцены-источника нет — добавляем новой сценой в конец раскадровки
+        const nextNumber = scenes.length ? Math.max(...scenes.map(s => s.number || 0)) + 1 : 1;
+        const restored: Scene = {
+          number: nextNumber,
+          title: sceneRef?.sceneTitle || goal.slice(0, 60) || `Сцена из сборки ${nextNumber}`,
+          location: 'восстановлено из сборки',
+          description: body,
+          duration: 30,
+          action: body,
+          dialogue: [],
+          improvedByLoop: true,
+        };
+        addLog(`↩️ Сборка ${String(doc.runId || doc.metaRunId || '')} добавлена новой сценой №${nextNumber} в раскадровку`);
+        return { ...prev, scenes: [...scenes, restored] };
+      }
+
+      // Сценария нет вовсе — создаём минимальный каркас, чтобы раскадровка показалась
+      const restored: Scene = {
+        number: 1,
+        title: sceneRef?.sceneTitle || goal.slice(0, 60) || 'Сцена из сборки',
+        location: 'восстановлено из сборки',
+        description: body,
+        duration: 30,
+        action: body,
+        dialogue: [],
+        improvedByLoop: true,
+      };
+      addLog(`↩️ Из сборки ${String(doc.runId || doc.metaRunId || '')} создан сценарий с одной сценой (луп-инженеринг → демо-режим)`);
+      return {
+        title: 'Сценарий из сборки лупа',
+        logline: goal,
+        style: 'восстановлено из галереи сборок',
+        totalDuration: restored.duration,
+        characters: [],
+        scenes: [restored],
+      } as Script;
+    });
+
+    setActiveMainTab('demo');
+    setActiveResultTab('scenes');
+  };
+
   const generateAll = async () => {
     if (!projectName || !projectIdea) return;
     
@@ -1182,6 +1250,7 @@ export default function AnimationStudio() {
           <LoopStudio
             sceneRequest={loopSceneRequest}
             onConsumeSceneRequest={() => setLoopSceneRequest(null)}
+            onRestoreScene={restoreAssemblyToScene}
           />
         )}
 

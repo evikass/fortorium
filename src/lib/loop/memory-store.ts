@@ -221,6 +221,31 @@ export async function initRun(runId: string, task: unknown): Promise<void> {
   });
 }
 
+// Удалить ОДИН файл памяти run-а (v6.3: используется галереей сборок для upsert/удаления)
+export async function deleteMemoryFile(runId: string, name: string): Promise<void> {
+  const safeName = path.basename(name);
+
+  if (blobConfigured()) {
+    try {
+      const result = await list({ prefix: `${BLOB_PREFIX}/${runId}/`, limit: 1000 });
+      const match = result.blobs.find((b) => b.pathname === blobKey(runId, safeName));
+      if (match) {
+        await del(match.url);
+      }
+    } catch (e) {
+      console.error('[MemoryStore] Ошибка удаления файла из Blob:', e);
+    }
+  }
+
+  for (const dir of runDirs(runId)) {
+    try {
+      await fs.unlink(path.join(dir, safeName));
+    } catch {
+      // файла может не быть в этом каталоге — не страшно
+    }
+  }
+}
+
 // Удалить run (полный сброс): чистим Blob и локальные каталоги
 export async function deleteRun(runId: string): Promise<void> {
   if (blobConfigured()) {

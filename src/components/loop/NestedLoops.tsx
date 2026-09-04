@@ -9,6 +9,7 @@
 // v6.0: живое SVG-дерево вложенности (MetaLoopTree) + персистентная память Vercel Blob.
 // v6.1: экспорт сборки надзирателя — портативный JSON-документ + Markdown-паспорт (GET ?export=json|md).
 // v6.2: импорт сборки — воспроизведение мета-run из JSON (восстанавливаются файлы памяти мета-лупа и всех детей).
+// v6.3: публикация сборки надзирателя в галерею + приём run-а, восстановленного из галереи (restoredMeta).
 // ============================================================
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -34,7 +35,16 @@ const EXAMPLE_GOALS = [
   'Развернуть сцену погони в полный эпизод: завязка, развитие, кульминация, развязка',
 ];
 
-export default function NestedLoops({ sceneRequest }: { sceneRequest?: MetaSceneRequest | null }) {
+export default function NestedLoops({
+  sceneRequest,
+  restoredMeta,
+  onRestoredMetaConsumed,
+}: {
+  sceneRequest?: MetaSceneRequest | null;
+  // v6.3: мета-run, восстановленный из галереи сборок (LoopStudio передаёт состояние из импорта)
+  restoredMeta?: Record<string, unknown> | null;
+  onRestoredMetaConsumed?: () => void;
+}) {
   // Форма задачи
   const [goal, setGoal] = useState('');
   const [artifactType, setArtifactType] = useState<ArtifactType>('scene');
@@ -56,6 +66,29 @@ export default function NestedLoops({ sceneRequest }: { sceneRequest?: MetaScene
   const autoAborted = useRef(false);
   const importFileRef = useRef<HTMLInputElement>(null); // v6.2: импорт сборки надзирателя из JSON
 
+  // v6.3: галерея сборок
+  const [pubNote, setPubNote] = useState<string | null>(null);
+  const [galleryBusy, setGalleryBusy] = useState(false);
+
+  // v6.3: публикация сборки надзирателя в галерею (upsert по metaRunId)
+  const publishMetaRun = async () => {
+    if (!meta || galleryBusy) return;
+    setPubNote(null);
+    setGalleryBusy(true);
+    try {
+      const res = await fetch('/api/loop/gallery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metaRunId: meta.metaRunId }),
+      });
+      const json = await res.json();
+      setPubNote(json.ok ? (json.note || 'Опубликовано в галерее') : (json.error || 'Не удалось опубликовать'));
+    } catch (e) {
+      setPubNote(`Ошибка публикации: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    setGalleryBusy(false);
+  };
+
   // Связка с демо-режимом: предзаполнение при поступлении запроса
   useEffect(() => {
     if (sceneRequest) {
@@ -65,6 +98,26 @@ export default function NestedLoops({ sceneRequest }: { sceneRequest?: MetaScene
       setStopInfo(null);
     }
   }, [sceneRequest]);
+
+  // v6.3: мета-run, восстановленный из галереи, — открываем его и заполняем форму задачи
+  useEffect(() => {
+    if (restoredMeta) {
+      const m = restoredMeta as unknown as MetaState;
+      setMeta(m);
+      setGoal(m.task?.goal || '');
+      setArtifactType(m.task?.artifactType || 'scene');
+      setChildCount(m.task?.childCount || 3);
+      setMaxMetaIterations(m.task?.maxMetaIterations || 2);
+      setChildMaxIterations(m.task?.childMaxIterations || 2);
+      setChildQualityThreshold(m.task?.childQualityThreshold || 7);
+      setMetaQualityThreshold(m.task?.metaQualityThreshold || 8);
+      setMaxTokens(m.task?.maxTokens || 90000);
+      setAutoMode(Boolean(m.task?.autoMode));
+      setError(null);
+      setStopInfo(null);
+      onRestoredMetaConsumed?.();
+    }
+  }, [restoredMeta, onRestoredMetaConsumed]);
 
   // ---- API ----
   const call = useCallback(async (body: Record<string, unknown>): Promise<MetaStepResponse> => {
@@ -488,11 +541,20 @@ export default function NestedLoops({ sceneRequest }: { sceneRequest?: MetaScene
             >
               ⬇️ Markdown-паспорт
             </a>
+            <button
+              onClick={publishMetaRun}
+              disabled={galleryBusy}
+              className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-emerald-300 hover:text-emerald-200 hover:border-emerald-500/40 transition disabled:opacity-40"
+              title="Опубликовать сборку надзирателя в галерее (повторная публикация обновит запись)"
+            >
+              {galleryBusy ? 'публикация…' : '↗️ В галерею'}
+            </button>
             {meta.task.sceneRef && (
               <span className="text-[10px] text-cyan-300/70">
                 🔗 сцена №{meta.task.sceneRef.sceneNumber} «{meta.task.sceneRef.sceneTitle}»
               </span>
             )}
+            {pubNote && <span className="w-full text-[10px] text-emerald-300/90">{pubNote}</span>}
           </div>
         )}
 
