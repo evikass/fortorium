@@ -13,6 +13,14 @@
 //  • BLOB_READ_WRITE_TOKEN задан  → пишем в Blob; при ошибке — фоллбэк на ФС;
 //  • токена нет (локальная разработка) → работаем на ФС как в v5.x.
 //
+// v6.3.1 — миграция на @vercel/blob SDK 2.x + приватный режим:
+//  • access: 'private' — файлы памяти читаются ТОЛЬКО через наши API-роуты
+//    (с sanitizeRunId), прямые URL клиентом не используются;
+//  • allowOverwrite: true — в SDK 2.x повторная запись в тот же pathname
+//    по умолчанию КИДАЕТ ОШИБКУ, а луп перезаписывает state.json на каждом шаге;
+//  • get(pathname, { access: 'private' }) → { stream, blob } | null —
+//    метода .text() больше нет, текст собираем через new Response(stream).text().
+//
 // Философия луп-инженеринга не меняется: память передаётся НЕ внутри диалога
 // (контекст переполняется), а через ФАЙЛЫ. Каждый агент — «чистый»:
 // нулевой контекст, читает только последний сохранённый файл состояния.
@@ -110,8 +118,9 @@ export async function writeMemoryFile(
   if (blobConfigured()) {
     try {
       await put(blobKey(runId, safeName), payload, {
-        access: 'public',
+        access: 'private',
         addRandomSuffix: false,
+        allowOverwrite: true, // SDK 2.x: без этого повторная запись state.json упадёт
         contentType: 'application/json; charset=utf-8',
       });
       return { file: `${runId}/${safeName}`, fallback: false };
@@ -132,9 +141,10 @@ export async function readMemoryFile<T = unknown>(runId: string, name: string): 
 
   if (blobConfigured()) {
     try {
-      const blob = await get(blobKey(runId, safeName));
-      if (blob) {
-        const raw = await blob.text();
+      // SDK 2.x: access обязателен; результат — { stream, blob } | null
+      const blob = await get(blobKey(runId, safeName), { access: 'private' });
+      if (blob && blob.stream) {
+        const raw = await new Response(blob.stream).text();
         try {
           return JSON.parse(raw) as T;
         } catch {
